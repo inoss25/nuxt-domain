@@ -22,21 +22,22 @@ Module Nuxt pour organiser vos pages par domaines (architecture domain-driven). 
 
 ## 📦 Installation
 
-Le module est déjà inclus dans votre projet. Assurez-vous qu'il est présent dans `nuxt.config.ts` :
+Installez le package **`nuxt-domain`** (voir [docs/GUIDE.md](../docs/GUIDE.md)). Les options pages se configurent sous **`domain.pages`** :
 
 ```typescript
 export default defineNuxtConfig({
-    modules: [
-        './modules/domain/index.ts',
-    ],
-    
-    domainPages: {
-        domainsDir: 'app/domains',      // Par défaut
-        childrenDirName: 'children',    // Nom du dossier pour les routes enfants
-        // routeDoc — voir « Options globales » pour désactiver ou changer le dossier de sortie
+    modules: ['nuxt-domain', '@nuxtjs/i18n'],
+    domain: {
+        domainsDir: 'app/domains',
+        pages: {
+            childrenDirName: 'children',
+            routeDoc: { outDir: '.nuxt/domain-pages' },
+        },
     },
 })
 ```
+
+> Ancienne clé `domainPages` : réservée à l’installation directe du sous-module seul ; avec le package composite, préférez **`domain.pages`**.
 
 ## 📁 Structure des fichiers
 
@@ -262,11 +263,12 @@ export default defineDomainConfig({
 
 ## 🔧 Options de configuration
 
-### Options globales (nuxt.config.ts)
+### Options globales (nuxt.config.ts → `domain.pages`)
 
 ```typescript
 export default defineNuxtConfig({
-    domainPages: {
+    domain: {
+        pages: {
         // Dossier contenant les domaines
         domainsDir: 'app/domains',
         
@@ -295,6 +297,7 @@ export default defineNuxtConfig({
 
         // Raccourci pour tout désactiver :
         // routeDoc: false,
+        },
     },
 })
 ```

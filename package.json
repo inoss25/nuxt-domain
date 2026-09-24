@@ -35,9 +35,15 @@
     "shared",
     "pages",
     "i18n",
+    "docs",
+    "scripts",
     "README.md"
   ],
+  "bin": {
+    "create-domain": "./scripts/create-domain.mjs"
+  },
   "scripts": {
+    "create-domain": "node ./scripts/create-domain.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },

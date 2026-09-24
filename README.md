@@ -1,65 +1,128 @@
 # nuxt-domain
 
-Architecture domain-driven pour Nuxt : routes, i18n et auto-imports par domaine.
+Module Nuxt pour une architecture **domain-driven (DDD)** : routes par domaine, auto-imports, agrégation i18n pour `@nuxtjs/i18n`.
 
-## Installation
+📖 **[Guide complet (installation, commandes, structure, config, packages)](./docs/GUIDE.md)**
+
+---
+
+## Démarrage rapide
+
+### 1. Installer
 
 ```bash
-pnpm add nuxt-domain
-# ou depuis le dépôt GitHub :
-pnpm add github:inoss25/nuxt-domain
+pnpm add nuxt-domain @nuxtjs/i18n
+# GitHub :
+pnpm add github:inoss25/nuxt-domain @nuxtjs/i18n
 ```
 
-Enregistrer le module **avant** `@nuxtjs/i18n` :
+### 2. Configurer Nuxt
 
 ```ts
-// nuxt.config.ts
+// nuxt.config.ts — nuxt-domain AVANT @nuxtjs/i18n
 export default defineNuxtConfig({
-  modules: [
-    'nuxt-domain',
-    '@nuxtjs/i18n',
-  ],
+  modules: ['nuxt-domain', '@nuxtjs/i18n'],
   domain: {
     domainsDir: 'app/domains',
-    strict: false,
-    pages: { routeDoc: { outDir: '.nuxt/domain-pages' } },
     i18n: { sharedI18nDirs: ['app/shared/i18n'] },
   },
   i18n: {
     langDir: 'locales',
-    defaultLocale: 'en',
-    locales: [{ code: 'en', file: 'en.json' }],
+    locales: [
+      { code: 'fr', file: 'fr.json' },
+      { code: 'en', file: 'en.json' },
+    ],
   },
 })
 ```
 
-### Dépendances
+### 3. Créer un domaine
 
-- **Peer** : `nuxt`, `@nuxtjs/i18n`
-- **Directes** (installées avec le package) : `fast-glob`, `jiti`
+Dans **package.json** de votre app :
 
-## Développement du package
+```json
+{
+  "scripts": {
+    "create-domain": "create-domain"
+  }
+}
+```
 
-| Commande | Description |
-|----------|-------------|
-| `pnpm test` | Tests unitaires (vitest) |
-| `pnpm install` | Installe les deps du package |
+Puis :
 
-## Structure
+```bash
+pnpm create-domain authentication
+pnpm create-domain shop --i18n fr,en
+```
+
+Sans script dédié :
+
+```bash
+pnpm exec create-domain billing --domains-dir app/domains
+```
+
+Voir [Créer un domaine](./docs/GUIDE.md#créer-un-domaine) pour toutes les options CLI.
+
+### 4. Structure minimale créée
+
+```
+app/domains/authentication/
+├── domain.config.ts
+├── pages/index.vue
+├── components/
+├── composables/
+└── i18n/          # si --i18n fr,en
+```
+
+---
+
+## Commandes
+
+| Où | Commande | Description |
+|----|----------|-------------|
+| Votre app | `pnpm create-domain <nom>` | Squelette de domaine (via bin `create-domain`) |
+| Votre app | `pnpm dev` | Régénère routes + locales |
+| Ce repo | `pnpm test` | Tests vitest du module |
+
+---
+
+## Packages utilisés
+
+| Type | Packages |
+|------|----------|
+| **Peer** (votre app) | `nuxt`, `@nuxtjs/i18n` |
+| **Bundled** (avec nuxt-domain) | [`fast-glob`](https://github.com/mrmlnc/fast-glob), [`jiti`](https://github.com/unjs/jiti) |
+| **Runtime Nuxt** | `nuxt/kit`, `@nuxt/schema` |
+
+Détails : [Packages et dépendances](./docs/GUIDE.md#packages-et-dépendances).
+
+---
+
+## Architecture du package
 
 ```
 nuxt-domain/
-├── README.md
-├── index.ts        # Point d'entrée Nuxt (composite pages + i18n)
-├── module.ts
-├── types.ts
-├── shared/         # Paths, config-loader (jiti), types
-├── pages/          # Routes + auto-imports + route-map
-└── i18n/           # Agrégation i18n → @nuxtjs/i18n
+├── docs/GUIDE.md       ← documentation utilisateur complète
+├── scripts/create-domain.mjs
+├── index.ts            ← entrée module Nuxt (pages + i18n)
+├── shared/             ← paths, jiti config-loader
+├── pages/              ← routes, auto-imports, route-map
+└── i18n/               ← compilation locales
 ```
 
-## Sous-modules
+---
 
-- [`shared/README.md`](./shared/README.md) — utilitaires internes
-- [`pages/README.md`](./pages/README.md) — génération de routes
-- [`i18n/README.md`](./i18n/README.md) — compilation des locales
+## Documentation détaillée
+
+| Document | Contenu |
+|----------|---------|
+| [**docs/GUIDE.md**](./docs/GUIDE.md) | Guide complet |
+| [pages/README.md](./pages/README.md) | Routes, exemples, `routeDoc` |
+| [i18n/README.md](./i18n/README.md) | Fusion JSON, clés, watch |
+| [shared/README.md](./shared/README.md) | API interne partagée |
+
+---
+
+## Licence
+
+MIT — voir [LICENSE](./LICENSE).
