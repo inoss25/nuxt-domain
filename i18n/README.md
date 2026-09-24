@@ -24,9 +24,15 @@ Exemple minimal :
 ```ts
 export default defineNuxtConfig({
   modules: [
-    './modules/domain/index.ts',
+    'nuxt-domain',
     '@nuxtjs/i18n',
   ],
+  domain: {
+    i18n: {
+      sharedI18nDirs: ['app/shared/i18n'],
+      outputDir: 'i18n/locales',
+    },
+  },
   i18n: {
     langDir: 'locales',
     defaultLocale: 'en',
@@ -42,7 +48,9 @@ Les fichiers générés sont écrits sous **`i18n/locales/`** (défaut de `domai
 
 ---
 
-## Options (`domainI18n`)
+> Avec le package composite, configurez ces options sous **`domain.i18n`** (voir [docs/GUIDE.md](../docs/GUIDE.md)).
+
+## Options (`domain.i18n` / anciennement `domainI18n`)
 
 | Option | Type | Défaut | Description |
 |--------|------|--------|-------------|
