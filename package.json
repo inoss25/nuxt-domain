@@ -1,0 +1,58 @@
+{
+  "name": "nuxt-domain",
+  "version": "0.1.0",
+  "description": "Architecture domain-driven pour Nuxt : routes, i18n et auto-imports par domaine",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/inoss25/nuxt-domain.git"
+  },
+  "bugs": {
+    "url": "https://github.com/inoss25/nuxt-domain/issues"
+  },
+  "homepage": "https://github.com/inoss25/nuxt-domain#readme",
+  "keywords": [
+    "nuxt",
+    "nuxt-module",
+    "ddd",
+    "domain-driven",
+    "i18n",
+    "routes"
+  ],
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts"
+    }
+  },
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "files": [
+    "index.ts",
+    "module.ts",
+    "types.ts",
+    "shared",
+    "pages",
+    "i18n",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "fast-glob": "^3.3.3",
+    "jiti": "^2.7.0"
+  },
+  "peerDependencies": {
+    "@nuxtjs/i18n": ">=8.0.0",
+    "nuxt": ">=3.12.0"
+  },
+  "devDependencies": {
+    "@nuxt/schema": "^4.5.2",
+    "nuxt": "^4.5.2",
+    "typescript": "^6.0.3",
+    "vitest": "^3.2.4"
+  }
+}
