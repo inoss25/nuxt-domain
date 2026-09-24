@@ -2,6 +2,8 @@ import fg from 'fast-glob'
 import { resolve, relative } from 'node:path'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { loadDomainConfigs } from '../../shared/runtime/config-loader'
+import type { DomainDiagnostic } from '../../shared/runtime/diagnostics'
+import { reportDiagnostics } from '../../shared/runtime/diagnostics'
 import { isDomainEnabled } from '../../shared/runtime/domain-enabled'
 import {
     normalizeDomainParts,
@@ -13,13 +15,19 @@ import {
     resolveLocaleCodeFromPathSegments,
 } from './locale'
 import { isPlainObject, mergeAtDomainPath } from './merge'
+import { resolveI18nValidation } from './resolve-i18n-options'
 import type { DomainI18nOptions } from './types'
 import {
     collectI18nLeafKeys,
     createI18nKeyTracker,
     generateTypedI18nDts,
-    reportI18nConflicts,
 } from './typed-i18n'
+import {
+    detectMergeTypeConflict,
+    validateInterpolationAcrossLocales,
+    validateJsonKeyFormat,
+    validateLocaleStructures,
+} from './validate-i18n'
 
 function parseJsonFile(absPath: string): Record<string, unknown> {
     const raw = readFileSync(absPath, 'utf8')
@@ -31,12 +39,14 @@ function parseJsonFile(absPath: string): Record<string, unknown> {
         return data
     } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
-        throw new Error(`[domain-i18n] JSON invalide: ${absPath}\n${msg}`)
+        throw new Error(
+            `[domain-i18n] JSON invalide: ${absPath}\n${msg}\nVérifiez la syntaxe JSON (virgules, guillemets, accolades).`
+        )
     }
 }
 
 function collectLocaleCodesFromNuxt(nuxt: {
-    options: { i18n?: { locales?: unknown } }
+    options: { i18n?: { locales?: unknown; defaultLocale?: string } }
 }): Set<string> {
     const codes = new Set<string>()
     const locales = nuxt.options.i18n?.locales
@@ -53,6 +63,15 @@ function collectLocaleCodesFromNuxt(nuxt: {
     return codes
 }
 
+function resolveReferenceLocale(
+    nuxt: { options: { i18n?: { defaultLocale?: string } } },
+    explicit?: string
+): string | undefined {
+    if (explicit) return explicit
+    const d = nuxt.options.i18n?.defaultLocale
+    return typeof d === 'string' ? d : undefined
+}
+
 function writeIfChanged(outPath: string, content: string): boolean {
     if (existsSync(outPath)) {
         const prev = readFileSync(outPath, 'utf8')
@@ -67,7 +86,9 @@ export interface GenerateLocalesParams {
     domainsRoot: string
     outputDir: string
     options: DomainI18nOptions
-    nuxt: { options: { i18n?: { locales?: unknown } } }
+    nuxt: {
+        options: { i18n?: { locales?: unknown; defaultLocale?: string } }
+    }
     sharedRuntimeDir: string
     pagesRuntimeDir: string
     debugLog: (...args: unknown[]) => void
@@ -85,9 +106,14 @@ export async function generateLocales(params: GenerateLocalesParams) {
         debugLog,
     } = params
 
-    const strict = options.strict === true
-    const conflictsByLocale = new Map<string, ReturnType<typeof createI18nKeyTracker>>()
-    const i18nConflicts: NonNullable<ReturnType<ReturnType<typeof createI18nKeyTracker>['track']>>[] = []
+    const validation = resolveI18nValidation(options)
+    const strict = validation.strict
+    const diagnostics: DomainDiagnostic[] = []
+
+    const conflictsByLocale = new Map<
+        string,
+        ReturnType<typeof createI18nKeyTracker>
+    >()
 
     const getTracker = (code: string) => {
         if (!conflictsByLocale.has(code)) {
@@ -102,6 +128,7 @@ export async function generateLocales(params: GenerateLocalesParams) {
         source: string,
         localeCode: string
     ) => {
+        if (!validation.detectDuplicates) return
         const tracker = getTracker(localeCode)
         const walk = (obj: Record<string, unknown>, parts: string[]) => {
             for (const [k, v] of Object.entries(obj)) {
@@ -109,11 +136,34 @@ export async function generateLocales(params: GenerateLocalesParams) {
                 if (isPlainObject(v)) walk(v, next)
                 else {
                     const conflict = tracker.track(next.join('.'), source)
-                    if (conflict) i18nConflicts.push(conflict)
+                    if (conflict) {
+                        diagnostics.push({
+                            ...conflict,
+                            level: 'error',
+                            file: source,
+                        })
+                    }
                 }
             }
         }
         walk(parsed, prefixSegments)
+    }
+
+    const ingestJson = (
+        parsed: Record<string, unknown>,
+        absPath: string,
+        sourceLabel: string
+    ) => {
+        if (validation.keyFormat) {
+            diagnostics.push(
+                ...validateJsonKeyFormat(
+                    parsed,
+                    validation.keyFormat,
+                    absPath
+                )
+            )
+        }
+        return { parsed, sourceLabel }
     }
 
     if (!existsSync(domainsRoot)) {
@@ -140,6 +190,7 @@ export async function generateLocales(params: GenerateLocalesParams) {
     }
 
     const sharedNs = options.sharedMessagesNamespace ?? 'global'
+    const domainKeyFormat = validation.domainKeyFormat
 
     const sharedDirs = (options.sharedI18nDirs ?? []).map((d) =>
         resolve(rootDir, d)
@@ -168,8 +219,21 @@ export async function generateLocales(params: GenerateLocalesParams) {
             if (!code) continue
             diskLocales.add(code)
             const parsed = parseJsonFile(abs)
+            ingestJson(parsed, abs, `${dir}/${rel}`)
             const root = ensureLocale(code)
-            mergeAtDomainPath(root, [sharedNs], parsed)
+            mergeAtDomainPath(root, [sharedNs], parsed, {
+                source: `${dir}/${rel}`,
+                onTypeConflict: (keyPath, prev, next) => {
+                    const d = detectMergeTypeConflict(
+                        prev,
+                        next,
+                        keyPath,
+                        'fusion précédente',
+                        `${dir}/${rel}`
+                    )
+                    if (d) diagnostics.push({ ...d, file: abs })
+                },
+            })
             trackParsed(parsed, [sharedNs], `${dir}/${rel}`, code)
             debugLog('📎 [domain-i18n] shared', { code, rel, namespace: sharedNs })
         }
@@ -206,9 +270,8 @@ export async function generateLocales(params: GenerateLocalesParams) {
                 continue
             }
 
-            const keyFormat = options.domainSegmentKeyFormat ?? 'snake_case'
             const domainSegments = normalizedSegments.map((s) =>
-                formatDomainSegmentForI18nKey(s, keyFormat)
+                formatDomainSegmentForI18nKey(s, domainKeyFormat)
             )
 
             const restSegs = rest.split('/').filter(Boolean)
@@ -218,8 +281,21 @@ export async function generateLocales(params: GenerateLocalesParams) {
 
             const abs = resolve(domainsRoot, file)
             const parsed = parseJsonFile(abs)
+            ingestJson(parsed, abs, file)
             const root = ensureLocale(code)
-            mergeAtDomainPath(root, domainSegments, parsed)
+            mergeAtDomainPath(root, domainSegments, parsed, {
+                source: file,
+                onTypeConflict: (keyPath, prev, next) => {
+                    const d = detectMergeTypeConflict(
+                        prev,
+                        next,
+                        keyPath,
+                        'source précédente',
+                        file
+                    )
+                    if (d) diagnostics.push({ ...d, file: abs })
+                },
+            })
             trackParsed(parsed, domainSegments, file, code)
 
             debugLog('📦 [domain-i18n] domain', {
@@ -231,7 +307,23 @@ export async function generateLocales(params: GenerateLocalesParams) {
         }
     }
 
-    reportI18nConflicts(i18nConflicts, strict)
+    const refLocale = resolveReferenceLocale(nuxt, validation.referenceLocale)
+
+    diagnostics.push(
+        ...validateLocaleStructures(
+            byLocale,
+            validation.validateLocaleStructure,
+            refLocale
+        )
+    )
+
+    if (validation.validateInterpolation) {
+        diagnostics.push(
+            ...validateInterpolationAcrossLocales(byLocale, refLocale)
+        )
+    }
+
+    reportDiagnostics('domain-i18n', diagnostics, strict)
 
     const configured = collectLocaleCodesFromNuxt(nuxt)
     const allLocales = new Set<string>([...configured, ...diskLocales])
@@ -244,7 +336,7 @@ export async function generateLocales(params: GenerateLocalesParams) {
 
     const allKeys: string[] = []
 
-    for (const code of allLocales) {
+    for (const code of [...allLocales].sort()) {
         const data = byLocale.get(code) ?? {}
         allKeys.push(...collectI18nLeafKeys(data))
         const content = `${JSON.stringify(data, null, 2)}\n`

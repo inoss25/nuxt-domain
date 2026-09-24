@@ -271,8 +271,78 @@ Exemples d’options **`domain.i18n`** :
 | `sharedI18nDirs` | `['app/shared/i18n']` | JSON fusionnés sous la clé `global` (namespace configurable). |
 | `sharedMessagesNamespace` | `'global'` | Préfixe des messages partagés dans le JSON compilé. |
 | `outputDir` | `'i18n/locales'` | Fichiers `fr.json`, `en.json`, … générés pour @nuxtjs/i18n. |
-| `domainSegmentKeyFormat` | `'snake_case'` | Forme des clés dérivées des noms de dossiers. |
+| `domainSegmentKeyFormat` | `'snake_case'` | *(legacy)* Préférez `domainKeyFormat`. |
+| `domainKeyFormat` | `snake_case` (via legacy) | Clé i18n générée à partir du **nom de dossier** (pas l’URL). |
+| `keyFormat` | *(absent)* | Si défini, valide les clés des JSON source. |
+| `detectDuplicates` | `true` | Collisions de clés / chemins domaine. |
+| `validateInterpolation` | `false` | Compare `{var}` entre locales. |
+| `validateLocaleStructure` | `false` | `missing` ou `all` pour comparer les arborescences. |
+| `referenceLocale` | locale Nuxt par défaut | Référence pour structure / interpolation. |
 | `watchSourcesInDev` | `true` | Regénère les locales en dev. |
+
+### Conventions de nommage (`domain.naming` + `domain.i18n`)
+
+Trois réglages **indépendants** :
+
+| Option | Portée | Défaut |
+|--------|--------|--------|
+| `domain.naming.domainNameFormat` | Dossiers sous `domainsDir` | *(aucune validation)* |
+| `domain.i18n.keyFormat` | Clés dans les JSON source | *(aucune validation)* |
+| `domain.i18n.domainKeyFormat` | Segments de clé compilée (`home`, `trip_prices`, …) | `snake_case` |
+
+Formats supportés : `snake_case`, `camelCase`, `PascalCase`, `kebab-case`, `preserve`.
+
+Exemple complet :
+
+```ts
+export default defineNuxtConfig({
+  modules: ['nuxt-domain', '@nuxtjs/i18n'],
+  domain: {
+    domainsDir: 'app/domains',
+    strict: true,
+    naming: {
+      domainNameFormat: 'kebab-case',
+    },
+    i18n: {
+      sharedI18nDirs: ['app/shared/i18n'],
+      keyFormat: 'snake_case',
+      domainKeyFormat: 'snake_case',
+      detectDuplicates: true,
+      validateInterpolation: true,
+      validateLocaleStructure: 'missing',
+    },
+  },
+})
+```
+
+**Important :**
+
+- Le module **ne renomme jamais** les dossiers ni les clés JSON.
+- Le **nom de dossier** (`trip-prices`) ≠ **clé i18n** (`trip_prices`) ≠ **URL** (`/trip-prices` via `prefix` / routes).
+- Caractères non ASCII : conservés dans les tokens, sans translittération automatique.
+
+### Fusion i18n et conflits
+
+Ordre déterministe (tri par chemin de fichier) :
+
+1. Fichiers `sharedI18nDirs` → namespace `global`.
+2. Fichiers `**/i18n/**/*.json` par domaine.
+
+En cas de conflit :
+
+- **Même clé feuille, deux sources** : signalé si `detectDuplicates` (dernier fichier gagnant, comme avant).
+- **Objet vs scalaire** sur un même chemin : erreur `i18n-merge-type` (plus d’écrasement silencieux ambigu).
+- **`trip-prices/` et `trip_prices/`** : collision de clé i18n si `domainKeyFormat: 'snake_case'`.
+
+### Interpolation (Vue I18n / @intlify)
+
+Avec `validateInterpolation: true`, le module compare les placeholders **`{name}`** (syntaxe nommée simple).
+
+Limites documentées :
+
+- Seuls les placeholders `{ident}` sont analysés.
+- Les séquences échappées `\{` ne comptent pas comme variable.
+- Pluriels, listes, `@:` linked messages : non analysés en profondeur.
 
 ---
 

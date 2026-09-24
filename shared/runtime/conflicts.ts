@@ -1,5 +1,14 @@
 export interface ConflictReport {
-  kind: 'route-path' | 'route-name' | 'i18n-key' | 'home'
+  kind:
+    | 'route-path'
+    | 'route-name'
+    | 'i18n-key'
+    | 'home'
+    | 'domain-name'
+    | 'i18n-key-format'
+    | 'i18n-structure'
+    | 'i18n-interpolation'
+    | 'i18n-merge-type'
   message: string
 }
 

@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 /**
  * Crée un squelette de domaine sous app/domains/<name>/ (ou DOMAINS_DIR).
- *
- * Usage:
- *   pnpm create-domain <nom>
- *   pnpm create-domain checkout --i18n fr,en
- *   pnpm create-domain auth --domains-dir app/domains
  */
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { createJiti } from 'jiti'
+
+const jiti = createJiti(import.meta.url)
+const { conformsToNameFormat, resolveNameFormat, formatName } = jiti(
+    '../shared/runtime/naming.ts'
+)
 
 const args = process.argv.slice(2)
 
@@ -17,20 +18,22 @@ function usage() {
 Usage: create-domain <nom-du-domaine> [options]
 
 Options:
-  --domains-dir <path>   Racine des domaines (défaut: app/domains ou DOMAINS_DIR)
-  --i18n <codes>       Locales à créer, séparées par des virgules (ex: fr,en)
-  --prefix <segment>   Valeur de prefix dans domain.config.ts (défaut: nom du domaine)
-  --no-pages           Ne pas créer pages/index.vue
-  -h, --help           Affiche cette aide
+  --domains-dir <path>     Racine des domaines (défaut: app/domains ou DOMAINS_DIR)
+  --name-format <format>   Convention du dossier (snake_case | camelCase | PascalCase | kebab-case)
+                           Défaut: kebab-case ou DOMAIN_NAME_FORMAT
+  --i18n <codes>           Locales JSON (ex: fr,en)
+  --prefix <segment>       prefix dans domain.config.ts (défaut: nom du domaine)
+  --no-pages               Ne pas créer pages/index.vue
+  -h, --help               Aide
 
 Exemples:
   pnpm create-domain authentication
-  pnpm create-domain shop --i18n fr,en
-  pnpm create-domain billing --domains-dir app/domains --prefix billing
+  pnpm create-domain shop --i18n fr,en --name-format kebab-case
 `)
 }
 
 let domainsDir = process.env.DOMAINS_DIR ?? 'app/domains'
+let nameFormatRaw = process.env.DOMAIN_NAME_FORMAT ?? 'kebab-case'
 let name = ''
 let i18nLocales = []
 let prefix = ''
@@ -44,6 +47,10 @@ for (let i = 0; i < args.length; i++) {
     }
     if (arg === '--domains-dir') {
         domainsDir = args[++i] ?? domainsDir
+        continue
+    }
+    if (arg === '--name-format') {
+        nameFormatRaw = args[++i] ?? nameFormatRaw
         continue
     }
     if (arg === '--i18n') {
@@ -70,9 +77,23 @@ if (!name) {
     process.exit(1)
 }
 
-if (!/^[a-z][a-z0-9-]*$/i.test(name)) {
+let nameFormat
+try {
+    nameFormat = resolveNameFormat(
+        nameFormatRaw,
+        'kebab-case',
+        'name-format / DOMAIN_NAME_FORMAT'
+    )
+} catch (e) {
+    console.error(e instanceof Error ? e.message : e)
+    process.exit(1)
+}
+
+if (!conformsToNameFormat(name, nameFormat)) {
+    const suggestion = formatName(name, nameFormat)
     console.error(
-        'Erreur: le nom doit être alphanumérique avec tirets (ex: user-profile).'
+        `Erreur: le nom "${name}" ne respecte pas la convention ${nameFormat}.` +
+            (suggestion ? `\nSuggestion: ${suggestion}` : '')
     )
     process.exit(1)
 }
@@ -154,6 +175,3 @@ console.log('')
 console.log('Prochaines étapes:')
 console.log('  1. Lancez pnpm dev (ou nuxt dev)')
 console.log(`  2. Ouvrez la route /${routePrefix}`)
-if (i18nLocales.length) {
-    console.log(`  3. Traduisez avec t('${name.replace(/-/g, '_')}.title') selon vos clés compilées`)
-}

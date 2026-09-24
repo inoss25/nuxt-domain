@@ -1,13 +1,17 @@
+import {
+    formatDomainSegmentKey,
+    type NameFormat,
+} from '../../shared/runtime/naming'
+
 /**
  * Clé message pour un segment de chemin domaine (dossier).
- * `user-profile` → `user_profile` ; `home` → `home`.
+ * Délègue à l'utilitaire central `formatDomainSegmentKey`.
  */
 export function formatDomainSegmentForI18nKey(
     segment: string,
-    format: 'snake_case' | 'preserve'
+    format: NameFormat
 ): string {
-    if (format === 'preserve') return segment
-    return segment.replace(/-/g, '_').toLowerCase()
+    return formatDomainSegmentKey(segment, format)
 }
 
 export function localeCodeFromFilename(name: string): string | null {
