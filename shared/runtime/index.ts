@@ -1,5 +1,10 @@
 export { defineDomainConfig } from './defineDomainConfig'
-export { loadDomainConfigs } from './config-loader'
+export {
+  loadDomainConfigs,
+  createDomainConfigCache,
+  getDomainConfigCache,
+  invalidateDomainConfigCache,
+} from './config-loader'
 export { isDomainEnabled } from './domain-enabled'
 export {
   toPosixPath,
@@ -15,6 +20,7 @@ export type {
   DomainRouteOverride,
 } from './types'
 export type {
+  DomainConfigCache,
   LoadDomainConfigsResult,
   LoadDomainConfigsParams,
 } from './config-loader'

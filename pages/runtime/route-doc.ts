@@ -1,9 +1,15 @@
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve, relative } from 'node:path'
 import type { NuxtPage } from '@nuxt/schema'
 import type { DomainRouteDocOptions } from './types'
 
 const toPosixPath = (p: string) => p.replace(/\\/g, '/')
+
+/** N'écrit que si le contenu change (évite de réveiller watchers et TS server). */
+function writeIfChanged(path: string, content: string): void {
+    if (existsSync(path) && readFileSync(path, 'utf8') === content) return
+    writeFileSync(path, content, 'utf8')
+}
 
 /* ------------------------------------------------------------------ */
 /*  Flatten helpers                                                     */
@@ -140,21 +146,21 @@ export function writeRouteDoc(ctx: RouteDocContext): void {
     // 1. Markdown doc
     const md = generateMarkdown(allRows, rootDir)
     const outFile = resolve(outDirAbs, routeDoc.fileName)
-    writeFileSync(outFile, md, 'utf8')
+    writeIfChanged(outFile, md)
     debugLog('📝 [domain-pages] route doc écrit:', {
         file: toPosixPath(relative(rootDir, outFile)),
     })
 
     // 2. JSON route map
     const jsonPath = resolve(outDirAbs, 'route-map.json')
-    writeFileSync(jsonPath, generateRouteMapJson(allRows), 'utf8')
+    writeIfChanged(jsonPath, generateRouteMapJson(allRows))
     debugLog('📦 [domain-pages] route-map.json écrit:', {
         file: toPosixPath(relative(rootDir, jsonPath)),
     })
 
     // 3. Typed routes (typed-router.d.ts)
     const typedPath = resolve(outDirAbs, 'typed-router.d.ts')
-    writeFileSync(typedPath, generateTypedRoutes(allRouteNames), 'utf8')
+    writeIfChanged(typedPath, generateTypedRoutes(allRouteNames))
     debugLog('🔒 [domain-pages] typed-router.d.ts écrit:', {
         file: toPosixPath(relative(rootDir, typedPath)),
     })

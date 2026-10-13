@@ -1,7 +1,11 @@
 import fg from 'fast-glob'
 import { resolve, relative } from 'node:path'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { loadDomainConfigs } from '../../shared/runtime/config-loader'
+import { readFile } from 'node:fs/promises'
+import {
+    loadDomainConfigs,
+    type DomainConfigCache,
+} from '../../shared/runtime/config-loader'
 import type { DomainDiagnostic } from '../../shared/runtime/diagnostics'
 import { reportDiagnostics } from '../../shared/runtime/diagnostics'
 import { isDomainEnabled } from '../../shared/runtime/domain-enabled'
@@ -29,8 +33,26 @@ import {
     validateLocaleStructures,
 } from './validate-i18n'
 
-function parseJsonFile(absPath: string): Record<string, unknown> {
-    const raw = readFileSync(absPath, 'utf8')
+/**
+ * Lit tous les fichiers en parallèle. Une erreur de lecture est renvoyée comme
+ * valeur (et non levée) pour que la première erreur reste celle, dans l'ordre
+ * trié des fichiers, du fichier concerné — comme avec la lecture séquentielle.
+ */
+async function readTexts(absPaths: string[]): Promise<Array<string | Error>> {
+    return Promise.all(
+        absPaths.map((p) =>
+            readFile(p, 'utf8').catch((e: unknown) =>
+                e instanceof Error ? e : new Error(String(e))
+            )
+        )
+    )
+}
+
+function parseJsonText(
+    raw: string | Error,
+    absPath: string
+): Record<string, unknown> {
+    if (raw instanceof Error) throw raw
     try {
         const data = JSON.parse(raw) as unknown
         if (!isPlainObject(data)) {
@@ -45,7 +67,7 @@ function parseJsonFile(absPath: string): Record<string, unknown> {
     }
 }
 
-function collectLocaleCodesFromNuxt(nuxt: {
+export function collectLocaleCodesFromNuxt(nuxt: {
     options: { i18n?: { locales?: unknown; defaultLocale?: string } }
 }): Set<string> {
     const codes = new Set<string>()
@@ -92,6 +114,8 @@ export interface GenerateLocalesParams {
     sharedRuntimeDir: string
     pagesRuntimeDir: string
     debugLog: (...args: unknown[]) => void
+    /** Cache partagé des `domain.config.ts` (voir `getDomainConfigCache`). */
+    configCache?: DomainConfigCache
 }
 
 export async function generateLocales(params: GenerateLocalesParams) {
@@ -104,6 +128,7 @@ export async function generateLocales(params: GenerateLocalesParams) {
         sharedRuntimeDir,
         pagesRuntimeDir,
         debugLog,
+        configCache,
     } = params
 
     const validation = resolveI18nValidation(options)
@@ -178,6 +203,7 @@ export async function generateLocales(params: GenerateLocalesParams) {
               pagesRuntimeDir,
               moduleLabel: 'domain-i18n',
               debugLog,
+              cache: configCache,
           })
         : { configs: new Map<string, DomainConfigPathFields>() }
 
@@ -212,13 +238,14 @@ export async function generateLocales(params: GenerateLocalesParams) {
     )
 
     for (const batch of sharedFilesNested) {
-        for (const { abs, rel, dir } of batch) {
+        const texts = await readTexts(batch.map((f) => f.abs))
+        for (const [i, { abs, rel, dir }] of batch.entries()) {
             const posixRel = toPosixPath(rel)
             const segs = posixRel.split('/').filter(Boolean)
             const code = resolveLocaleCodeFromPathSegments(segs)
             if (!code) continue
             diskLocales.add(code)
-            const parsed = parseJsonFile(abs)
+            const parsed = parseJsonText(texts[i]!, abs)
             ingestJson(parsed, abs, `${dir}/${rel}`)
             const root = ensureLocale(code)
             mergeAtDomainPath(root, [sharedNs], parsed, {
@@ -246,7 +273,12 @@ export async function generateLocales(params: GenerateLocalesParams) {
             ignore: ['**/_*/**'],
         })
 
-        for (const file of domainJsonFiles.sort()) {
+        const sortedDomainFiles = domainJsonFiles.sort()
+        const domainTexts = await readTexts(
+            sortedDomainFiles.map((f) => resolve(domainsRoot, f))
+        )
+
+        for (const [fileIndex, file] of sortedDomainFiles.entries()) {
             const posix = toPosixPath(file)
             const idx = posix.lastIndexOf('/i18n/')
             if (idx === -1) continue
@@ -280,7 +312,7 @@ export async function generateLocales(params: GenerateLocalesParams) {
             diskLocales.add(code)
 
             const abs = resolve(domainsRoot, file)
-            const parsed = parseJsonFile(abs)
+            const parsed = parseJsonText(domainTexts[fileIndex]!, abs)
             ingestJson(parsed, abs, file)
             const root = ensureLocale(code)
             mergeAtDomainPath(root, domainSegments, parsed, {
@@ -338,7 +370,9 @@ export async function generateLocales(params: GenerateLocalesParams) {
 
     for (const code of [...allLocales].sort()) {
         const data = byLocale.get(code) ?? {}
-        allKeys.push(...collectI18nLeafKeys(data))
+        // Boucle plutôt que push(...spread) : le spread dépasse la pile d'appels
+        // au-delà de ~100k clés.
+        for (const key of collectI18nLeafKeys(data)) allKeys.push(key)
         const content = `${JSON.stringify(data, null, 2)}\n`
         const outPath = resolve(outputDir, `${code}.json`)
         if (writeIfChanged(outPath, content)) {
