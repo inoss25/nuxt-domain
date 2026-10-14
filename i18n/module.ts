@@ -3,7 +3,11 @@ import { resolve, relative, isAbsolute, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { fileIsUnderRoot, toPosixPath } from '../shared/runtime/paths'
 import type { DomainI18nOptions } from './runtime/types'
-import { generateLocales } from './runtime/generate-locales'
+import {
+    generateLocales,
+    collectLocaleCodesFromNuxt,
+} from './runtime/generate-locales'
+import { getDomainConfigCache } from '../shared/runtime/config-loader'
 
 function shouldRegenerateFromWatch(
     absPath: string,
@@ -77,8 +81,24 @@ export default defineNuxtModule<DomainI18nOptions>({
             references.push({ path: typedI18nFile })
         })
 
-        const runGenerate = () =>
-            generateLocales({
+        const configCache = getDomainConfigCache(nuxt)
+
+        // Les locales configurées (et la locale par défaut) influencent la sortie :
+        // si un autre module les modifie après notre setup, il faut régénérer.
+        const localesSignature = () =>
+            `${nuxt.options.i18n?.defaultLocale ?? ''}|${[
+                ...collectLocaleCodesFromNuxt(nuxt),
+            ]
+                .sort()
+                .join(',')}`
+
+        let generatedWith = ''
+        let dirty = false
+
+        const runGenerate = async () => {
+            dirty = false
+            generatedWith = localesSignature()
+            return generateLocales({
                 rootDir,
                 domainsRoot,
                 outputDir,
@@ -87,11 +107,19 @@ export default defineNuxtModule<DomainI18nOptions>({
                 sharedRuntimeDir,
                 pagesRuntimeDir,
                 debugLog,
+                configCache,
             })
+        }
 
         await runGenerate()
 
+        // Déjà généré au setup : on ne refait le travail que si une source a
+        // changé depuis (watcher) ou si les locales configurées ont bougé.
         nuxt.hook('build:before', async () => {
+            if (!dirty && generatedWith === localesSignature()) {
+                debugLog('⏩ [domain-i18n] build:before — déjà à jour')
+                return
+            }
             await runGenerate()
         })
 
@@ -105,6 +133,7 @@ export default defineNuxtModule<DomainI18nOptions>({
             let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
             const scheduleGenerate = () => {
+                dirty = true
                 if (debounceTimer) clearTimeout(debounceTimer)
                 debounceTimer = setTimeout(() => {
                     debounceTimer = null

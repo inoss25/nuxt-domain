@@ -5,10 +5,11 @@ import {
     addImportsDir,
 } from 'nuxt/kit'
 import fg from 'fast-glob'
-import { resolve, relative, isAbsolute, dirname } from 'node:path'
+import { resolve, relative, isAbsolute, dirname, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { DomainPagesOptions, DomainRouteDocOptions } from './runtime/types'
 import { loadDomainConfigs } from './runtime/config-loader'
+import { getDomainConfigCache } from '../shared/runtime/config-loader'
 import { generateDomainRoutes } from './runtime/route-generator'
 import { writeRouteDoc } from './runtime/route-doc'
 import {
@@ -57,21 +58,36 @@ async function registerDomainAutoImports(
     addComponent: typeof addComponentsDir,
     addImport: typeof addImportsDir
 ) {
-    const scan = (pattern: string) =>
-        fg(pattern, {
+    // Un seul parcours de l'arborescence pour les 5 types de dossiers.
+    const found = await fg(
+        [
+            '**/components',
+            '**/composables',
+            '**/layouts',
+            '**/stores',
+            '**/utils',
+        ],
+        {
             cwd: domainsRoot,
             onlyDirectories: true,
             ignore: [...AUTO_IMPORT_IGNORE],
-        })
+        }
+    )
 
-    const [componentDirs, composableDirs, layoutDirs, storeDirs, utilDirs] =
-        await Promise.all([
-            scan('**/components'),
-            scan('**/composables'),
-            scan('**/layouts'),
-            scan('**/stores'),
-            scan('**/utils'),
-        ])
+    const byKind: Record<string, string[]> = {
+        components: [],
+        composables: [],
+        layouts: [],
+        stores: [],
+        utils: [],
+    }
+    for (const dir of found) byKind[basename(dir)]?.push(dir)
+
+    const componentDirs = byKind.components!
+    const composableDirs = byKind.composables!
+    const layoutDirs = byKind.layouts!
+    const storeDirs = byKind.stores!
+    const utilDirs = byKind.utils!
 
     for (const dir of componentDirs) {
         addComponent({
@@ -147,14 +163,17 @@ export default defineNuxtModule<DomainPagesOptions>({
             references.push({ path: typedRouterFile })
         })
 
-        let domainConfigs = (
-            await loadDomainConfigs(
-                domainsRoot,
-                options,
-                sharedRuntimeDir,
-                pagesRuntimeDir,
-                debugLog
-            )
+        // Cache partagé avec le module i18n : les domain.config.ts ne sont
+        // chargés qu'une fois tant qu'ils ne changent pas.
+        const configCache = getDomainConfigCache(nuxt)
+
+        let domainConfigs = await loadDomainConfigs(
+            domainsRoot,
+            options,
+            sharedRuntimeDir,
+            pagesRuntimeDir,
+            debugLog,
+            configCache
         )
 
         await registerDomainAutoImports(
@@ -240,7 +259,8 @@ export default defineNuxtModule<DomainPagesOptions>({
                         options,
                         sharedRuntimeDir,
                         pagesRuntimeDir,
-                        debugLog
+                        debugLog,
+                        configCache
                     )
                     enqueueRefresh('domain.config', absPath)
                     return
