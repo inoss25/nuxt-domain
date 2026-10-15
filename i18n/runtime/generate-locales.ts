@@ -34,18 +34,30 @@ import {
 } from './validate-i18n'
 
 /**
- * Lit tous les fichiers en parallèle. Une erreur de lecture est renvoyée comme
+ * Lit les fichiers avec un parallélisme plafonné. Une erreur de lecture est renvoyée comme
  * valeur (et non levée) pour que la première erreur reste celle, dans l'ordre
  * trié des fichiers, du fichier concerné — comme avec la lecture séquentielle.
  */
 async function readTexts(absPaths: string[]): Promise<Array<string | Error>> {
-    return Promise.all(
-        absPaths.map((p) =>
-            readFile(p, 'utf8').catch((e: unknown) =>
-                e instanceof Error ? e : new Error(String(e))
-            )
-        )
+    const results: Array<string | Error> = new Array(absPaths.length)
+    // Garde un parallélisme utile sans ouvrir simultanément un descripteur par
+    // fichier lorsque les projets contiennent de gros catalogues de locales.
+    let nextIndex = 0
+    const workerCount = Math.min(absPaths.length, 32)
+    await Promise.all(
+        Array.from({ length: workerCount }, async () => {
+            while (true) {
+                const index = nextIndex++
+                if (index >= absPaths.length) return
+                try {
+                    results[index] = await readFile(absPaths[index]!, 'utf8')
+                } catch (e) {
+                    results[index] = e instanceof Error ? e : new Error(String(e))
+                }
+            }
+        })
     )
+    return results
 }
 
 function parseJsonText(

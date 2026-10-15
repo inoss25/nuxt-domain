@@ -32,15 +32,19 @@
     "index.ts",
     "module.ts",
     "types.ts",
-    "shared",
-    "pages",
-    "i18n",
-    "docs",
-    "scripts",
+    "shared/runtime",
+    "pages/index.ts",
+    "pages/module.ts",
+    "pages/runtime",
+    "i18n/index.ts",
+    "i18n/module.ts",
+    "i18n/runtime",
+    "docs/GUIDE.md",
+    "scripts/create-domain.mjs",
     "README.md"
   ],
   "bin": {
-    "create-domain": "./scripts/create-domain.mjs"
+    "create-domain": "scripts/create-domain.mjs"
   },
   "scripts": {
     "create-domain": "node ./scripts/create-domain.mjs",
