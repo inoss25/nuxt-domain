@@ -183,9 +183,10 @@ Les options de surveillance servent uniquement en développement; elles n’affe
 ```bash
 pnpm create-domain authentication
 pnpm create-domain shop --i18n fr,en
+pnpm create-domain billing --only pages,composables,utils
 ```
 
-La commande crée le dossier du domaine et, avec `--i18n`, les fichiers de traduction correspondants. Consultez le [guide de la CLI](https://github.com/inoss25/nuxt-domain/blob/main/docs/GUIDE.md#créer-un-domaine) pour toutes les options.
+`--only` accepte `pages`, `components`, `composables`, `layouts`, `stores` et `utils`, séparés par des virgules. Sans cette option, tous les dossiers sont créés par défaut. `domain.config.ts` est toujours présent; `--i18n fr,en` ajoute les traductions. Consultez le [guide de la CLI](https://github.com/inoss25/nuxt-domain/blob/main/docs/GUIDE.md#créer-un-domaine) pour toutes les options.
 
 ## Ce que le module génère
 

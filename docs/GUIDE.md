@@ -171,6 +171,15 @@ Sans page par défaut :
 pnpm create-domain reports --no-pages
 ```
 
+Ne créez que les dossiers dont ce domaine a besoin avec `--only` (liste séparée par des virgules) :
+
+```bash
+pnpm create-domain billing --only pages,composables,utils
+pnpm create-domain reporting --only components,stores --i18n fr,en
+```
+
+Valeurs acceptées : `pages`, `components`, `composables`, `layouts`, `stores` et `utils`. Si `--only` est absent, la CLI crée les six dossiers comme auparavant. `domain.config.ts` est toujours créé. `--no-pages` empêche de générer `pages/index.vue`, y compris si `pages` figure dans la sélection. Les traductions sont sélectionnées séparément avec `--i18n <codes>`.
+
 Équivalent sans script npm :
 
 ```bash
