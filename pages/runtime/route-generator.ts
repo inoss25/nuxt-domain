@@ -154,6 +154,29 @@ async function _generateDomainRoutes(
     const routeMap = new Map<string, NuxtPage>()
     const childrenMap = new Map<string, NuxtPage[]>()
 
+    // Plusieurs pages appartiennent souvent au même domaine. Ces réglages ne
+    // changent pas pendant une génération : les calculer une fois par domaine.
+    const domainSettingsCache = new Map<string, ReturnType<typeof getEffectiveDomainSettings>>()
+    const domainPrefixCache = new Map<string, string[]>()
+    const nestedDomainCache = new Map<string, boolean>()
+    const getSettings = (id: string) => {
+        let value = domainSettingsCache.get(id)
+        if (!value) {
+            value = getEffectiveDomainSettings(domainConfigs, id)
+            domainSettingsCache.set(id, value)
+        }
+        return value
+    }
+    const getPrefixParts = (id: string, disabled: boolean) => {
+        const key = `${disabled ? '1' : '0'}:${id}`
+        let value = domainPrefixCache.get(key)
+        if (!value) {
+            value = getDomainPrefixParts(domainConfigs, id, disabled)
+            domainPrefixCache.set(key, value)
+        }
+        return value
+    }
+
     let homeRoute: NuxtPage | null = null
     let homeDomain: string | null = null
 
@@ -175,14 +198,19 @@ async function _generateDomainRoutes(
         const domainId = normalizeDomainParts(domainConfigs, options, rawDomainParts, debugLog).join('/')
         if (!domainId) continue
 
-        if (!isNestedDomainAllowed(domainConfigs, domainId)) {
+        let nestedAllowed = nestedDomainCache.get(domainId)
+        if (nestedAllowed === undefined) {
+            nestedAllowed = isNestedDomainAllowed(domainConfigs, domainId)
+            nestedDomainCache.set(domainId, nestedAllowed)
+        }
+        if (!nestedAllowed) {
             debugLog('⛔ [domain-pages] sous-domaine ignoré (parent hasSubDomains=false)', {
                 rawDomainPath, domainId, file,
             })
             continue
         }
 
-        const effective = getEffectiveDomainSettings(domainConfigs, domainId)
+        const effective = getSettings(domainId)
         if (!effective.enabled) continue
 
         const domainRoot = domainId.split('/')[0] ?? domainId
@@ -191,7 +219,7 @@ async function _generateDomainRoutes(
         const isIndex = leaf.toLowerCase() === 'index'
 
         const modulePrefixDisabled = noPrefixDomains.includes(domainRoot)
-        const domainPrefixParts = getDomainPrefixParts(domainConfigs, domainId, modulePrefixDisabled)
+        const domainPrefixParts = getPrefixParts(domainId, modulePrefixDisabled)
         const domainPrefixPath = domainPrefixParts.join('/')
 
         let fullPath = domainPrefixPath ? `/${domainPrefixPath}` : ''
