@@ -198,31 +198,80 @@ pnpm create-domain billing --only pages,composables,utils
 - **Fichiers de locales** en fusionnant les JSON des domaines et des dossiers partagés.
 - **Documentation et types de routes** générés dans `.nuxt/domain-pages` par défaut.
 
-Les sources suivent une structure comme celle-ci :
+### Structure d’un domaine
+
+Chaque domaine regroupe la configuration et les fichiers liés à une même fonctionnalité. Voici une structure complète possible; les dossiers restent facultatifs selon les besoins du domaine :
 
 ```text
-app/domains/
-├── authentication/
-│   ├── domain.config.ts
-│   ├── pages/
-│   ├── components/
-│   ├── composables/
-│   └── i18n/
-└── inventory/
-    ├── domain.config.ts
-    └── domains/
-        └── brands/
-            ├── domain.config.ts
-            └── pages/
+app/domains/account/
+├── domain.config.ts
+├── pages/
+│   ├── index.vue
+│   └── profile.vue
+├── components/
+│   └── AccountForm.vue
+├── composables/
+│   └── useAccount.ts
+├── layouts/
+│   ├── default.vue
+│   └── auth.vue
+├── stores/
+│   └── account.ts
+├── utils/
+│   └── validation.ts
+├── i18n/
+│   ├── fr.json
+│   └── en.json
+├── assets/
+│   ├── logo.svg
+│   └── account.css
+└── domains/
+    └── settings/
+        ├── domain.config.ts
+        └── pages/
+            └── index.vue
 ```
+
+| Dossier / fichier | Rôle |
+|---|---|
+| `domain.config.ts` | Configure le domaine : activation, préfixe d’URL, middleware, métadonnées, sous-domaines et layout par défaut. |
+| `pages/` | Contient les pages Vue qui deviennent des routes Nuxt. Par exemple, `pages/profile.vue` devient `/account/profile`; les fichiers `[id].vue` créent des segments dynamiques. |
+| `components/` | Composants Vue propres au domaine, enregistrés pour l’auto-import Nuxt. Utilise-les pour découper l’interface en éléments réutilisables. |
+| `composables/` | Fonctions composables auto-importées, par exemple `useAccount()` pour partager la logique Vue du domaine. |
+| `layouts/` | Layouts Nuxt du domaine. Ils définissent une structure de page réutilisable, par exemple une mise en page d’authentification sans navigation principale. Voir la section ci-dessous. |
+| `stores/` | Stores auto-importés, par exemple les stores Pinia liés au domaine. |
+| `utils/` | Fonctions utilitaires auto-importées, sans dépendance à l’interface Vue. |
+| `i18n/` | Fichiers JSON de traduction du domaine, fusionnés par le module i18n avec les traductions partagées. |
+| `assets/` | Images, polices et styles propres au domaine. Importe-les depuis un fichier Vue ou CSS pour que Vite les traite et les inclue dans le build. Ce dossier n’est pas auto-importé ni créé par la CLI. |
+| `domains/` | Sous-domaines métier imbriqués. Le domaine parent doit autoriser les sous-domaines avec `hasSubDomains: true`; chaque sous-domaine possède sa propre configuration et ses propres dossiers. |
+
+La CLI crée `domain.config.ts` et, par défaut, les dossiers `pages/`, `components/`, `composables/`, `layouts/`, `stores/` et `utils/`. `i18n/` est ajouté avec `--i18n`; `assets/` et `domains/` se créent lorsque le projet en a besoin.
+
+Tu peux aussi ajouter des dossiers propres à ton application, comme `services/` ou `repositories/`. Ils restent dans le domaine, mais le module ne les parcourt pas et ne les auto-importe pas automatiquement.
 
 ### Layouts de domaine
 
-Les fichiers `.vue` de `layouts/` sont enregistrés comme de vrais layouts Nuxt via `addLayout`. Leur nom est préfixé par le domaine pour éviter les collisions : `app/domains/account/layouts/default.vue` devient `account-default`.
+Les fichiers `.vue` de `layouts/` sont enregistrés comme de vrais layouts Nuxt via `addLayout`. Un layout contient `<slot />` à l’endroit où Nuxt affiche la page. Leur nom est préfixé par le domaine pour éviter les collisions : `app/domains/account/layouts/default.vue` devient `account-default`, et `layouts/auth.vue` devient `account-auth`.
 
-Dans `domain.config.ts`, `layout: 'default'` applique ce layout par défaut à toutes les pages du domaine. Les sous-domaines héritent du réglage, qu’ils peuvent remplacer dans leur propre configuration. Une page peut choisir un autre layout enregistré ou désactiver le layout avec `definePageMeta({ layout: false })`.
+Dans `domain.config.ts`, `layout: 'default'` applique `account-default` par défaut aux pages du domaine. La valeur désigne le chemin du fichier dans `layouts/`, sans extension : par exemple `layout: 'auth'` sélectionne `layouts/auth.vue`, et `layout: 'auth/login'` sélectionne `layouts/auth/login.vue`. Les sous-domaines héritent du réglage, qu’ils peuvent remplacer dans leur propre configuration. Une page peut choisir un autre layout enregistré avec `definePageMeta({ layout: 'account-auth' })` ou désactiver le layout avec `definePageMeta({ layout: false })`.
 
-Comme dans Nuxt standard, `app.vue` doit contenir `<NuxtLayout><NuxtPage /></NuxtLayout>`. Sans option `layout` dans la configuration du domaine, Nuxt garde son fonctionnement habituel et utilise le layout global `default` s’il existe.
+Comme dans Nuxt standard, `app.vue` doit contenir `<NuxtLayout><NuxtPage /></NuxtLayout>`. Sans option `layout` dans la configuration du domaine, Nuxt garde son fonctionnement habituel et utilise le layout global `default` s’il existe. Un layout de domaine n’est pas appliqué automatiquement en l’absence de `layout` dans `domain.config.ts`.
+
+### Assets propres au domaine
+
+Les assets sont importés depuis les fichiers qui les utilisent. Depuis `pages/profile.vue`, par exemple :
+
+```vue
+<script setup lang="ts">
+import accountLogo from '../assets/logo.svg'
+</script>
+
+<template>
+  <img :src="accountLogo" alt="Compte" />
+</template>
+```
+
+Vite résout et prépare cet asset pour le build. Pour un fichier qui doit garder une URL statique connue sans import, place-le plutôt dans le dossier `public/` de l’application.
 
 ## Documentation
 
