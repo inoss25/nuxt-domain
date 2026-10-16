@@ -189,12 +189,13 @@ pnpm create-domain shop --i18n fr,en
 pnpm create-domain billing --only pages,composables,utils
 ```
 
-`--only` accepte `pages`, `components`, `composables`, `layouts`, `stores` et `utils`, séparés par des virgules. Sans cette option, tous les dossiers sont créés par défaut. `domain.config.ts` est toujours présent; `--i18n fr,en` ajoute les traductions. Consultez le [guide de la CLI](https://github.com/inoss25/nuxt-domain/blob/main/docs/GUIDE.md#créer-un-domaine) pour toutes les options.
+`--only` accepte `pages`, `components`, `composables`, `layouts`, `stores`, `utils` et `public`, séparés par des virgules. Sans cette option, tous ces dossiers sont créés par défaut. `domain.config.ts` est toujours présent; `--i18n fr,en` ajoute les traductions. Consultez le [guide de la CLI](https://github.com/inoss25/nuxt-domain/blob/main/docs/GUIDE.md#créer-un-domaine) pour toutes les options.
 
 ## Ce que le module génère
 
 - **Routes Nuxt** depuis `pages/`, avec prise en charge des paramètres, des sous-domaines, des routes enfants et des options par domaine.
 - **Layouts Nuxt de domaine** depuis `layouts/`, et auto-imports depuis `components/`, `composables/`, `stores/` et `utils/`.
+- **Assets statiques par domaine** depuis `public/`, servis sous une URL préfixée par le chemin du domaine.
 - **Fichiers de locales** en fusionnant les JSON des domaines et des dossiers partagés.
 - **Documentation et types de routes** générés dans `.nuxt/domain-pages` par défaut.
 
@@ -225,6 +226,8 @@ app/domains/account/
 ├── assets/
 │   ├── logo.svg
 │   └── account.css
+├── public/
+│   └── logo.svg
 └── domains/
     └── settings/
         ├── domain.config.ts
@@ -243,9 +246,10 @@ app/domains/account/
 | `utils/` | Fonctions utilitaires auto-importées, sans dépendance à l’interface Vue. |
 | `i18n/` | Fichiers JSON de traduction du domaine, fusionnés par le module i18n avec les traductions partagées. |
 | `assets/` | Images, polices et styles propres au domaine. Importe-les depuis un fichier Vue ou CSS pour que Vite les traite et les inclue dans le build. Ce dossier n’est pas auto-importé ni créé par la CLI. |
+| `public/` | Fichiers statiques du domaine, servis directement sans import sous `/domains/<chemin-du-domaine>/`. Par exemple, `account/public/logo.svg` est disponible à `/domains/account/logo.svg`. Le module ajoute ce dossier à Nitro; la CLI le crée par défaut ou avec `--only public`. |
 | `domains/` | Sous-domaines métier imbriqués. Le domaine parent doit autoriser les sous-domaines avec `hasSubDomains: true`; chaque sous-domaine possède sa propre configuration et ses propres dossiers. |
 
-La CLI crée `domain.config.ts` et, par défaut, les dossiers `pages/`, `components/`, `composables/`, `layouts/`, `stores/` et `utils/`. `i18n/` est ajouté avec `--i18n`; `assets/` et `domains/` se créent lorsque le projet en a besoin.
+La CLI crée `domain.config.ts` et, par défaut, les dossiers `pages/`, `components/`, `composables/`, `layouts/`, `stores/`, `utils/` et `public/`. `i18n/` est ajouté avec `--i18n`; `assets/` et `domains/` se créent lorsque le projet en a besoin. Utilise `--only` pour choisir les dossiers nécessaires, y compris `public`.
 
 Tu peux aussi ajouter des dossiers propres à ton application, comme `services/` ou `repositories/`. Ils restent dans le domaine, mais le module ne les parcourt pas et ne les auto-importe pas automatiquement.
 
@@ -271,7 +275,7 @@ import accountLogo from '../assets/logo.svg'
 </template>
 ```
 
-Vite résout et prépare cet asset pour le build. Pour un fichier qui doit garder une URL statique connue sans import, place-le plutôt dans le dossier `public/` de l’application.
+Vite résout et prépare cet asset pour le build. Pour un fichier qui doit garder une URL statique connue sans import, place-le dans `public/` du domaine : `app/domains/account/public/logo.svg` est servi à `/domains/account/logo.svg`. Le `public/` global de l’application reste aussi disponible à la racine, par exemple `public/favicon.ico` à `/favicon.ico`.
 
 ## Documentation
 
@@ -289,6 +293,20 @@ Depuis le dépôt :
 pnpm install
 pnpm test
 ```
+
+Pour mesurer les étapes principales de génération, lance `pnpm benchmark`. Le benchmark crée un projet fictif dans un dossier temporaire, mesure le chargement des configurations avec cache froid et chaud, le scan des dossiers, la génération des routes et la fusion des locales, puis supprime le projet temporaire. Il affiche la médiane, le minimum et le 95e percentile en millisecondes, après un passage d’échauffement.
+
+La charge par défaut contient 50 domaines, 500 pages et 100 fichiers i18n. Pour ajuster le scénario sous PowerShell :
+
+```powershell
+$env:DOMAIN_BENCH_DOMAINS=100
+$env:DOMAIN_BENCH_PAGES=20
+$env:DOMAIN_BENCH_LOCALES=3
+$env:DOMAIN_BENCH_ITERATIONS=10
+pnpm benchmark
+```
+
+Les résultats dépendent de la machine et du système de fichiers. Compare les mêmes paramètres et le même environnement avant/après une modification; la durée de la suite de tests ne remplace pas une mesure du démarrage d’une application Nuxt réelle.
 
 ## Licence
 

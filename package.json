@@ -50,7 +50,8 @@
   "scripts": {
     "create-domain": "node ./scripts/create-domain.mjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "benchmark": "node ./scripts/benchmark.mjs"
   },
   "dependencies": {
     "fast-glob": "^3.3.3",

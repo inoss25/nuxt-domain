@@ -32,7 +32,7 @@ Documentation d’utilisation du package **nuxt-domain** : installation, command
 
 | Sous-module | Rôle |
 |-------------|------|
-| **domain-pages** | Génère les routes depuis `app/domains/**/pages/`, auto-importe composants/composables/layouts/stores/utils, produit `route-map.json` et types router. |
+| **domain-pages** | Génère les routes depuis `app/domains/**/pages/`, enregistre les layouts, auto-importe composants/composables/stores/utils, sert les assets `public/` et produit `route-map.json` avec les types router. |
 | **domain-i18n** | Fusionne les JSON i18n par domaine + dossiers partagés → un fichier par locale pour `@nuxtjs/i18n`. |
 
 Principe DDD : **un dossier = un domaine métier** (`authentication`, `dashboard`, `checkout`, …).
@@ -178,7 +178,7 @@ pnpm create-domain billing --only pages,composables,utils
 pnpm create-domain reporting --only components,stores --i18n fr,en
 ```
 
-Valeurs acceptées : `pages`, `components`, `composables`, `layouts`, `stores` et `utils`. Si `--only` est absent, la CLI crée les six dossiers comme auparavant. `domain.config.ts` est toujours créé. `--no-pages` empêche de générer `pages/index.vue`, y compris si `pages` figure dans la sélection. Les traductions sont sélectionnées séparément avec `--i18n <codes>`.
+Valeurs acceptées : `pages`, `components`, `composables`, `layouts`, `stores`, `utils` et `public`. Si `--only` est absent, la CLI crée ces sept dossiers. `public/` est servi sous `/domains/<nom-du-domaine>/`; les sous-domaines ajoutent leur chemin complet à cette URL. `domain.config.ts` est toujours créé. `--no-pages` empêche de générer `pages/index.vue`, y compris si `pages` figure dans la sélection. Les traductions sont sélectionnées séparément avec `--i18n <codes>`.
 
 Équivalent sans script npm :
 
@@ -224,12 +224,14 @@ app/domains/
 │   │           └── edit.vue
 │   ├── components/                 # Auto-import Vue
 │   ├── composables/                # Auto-import composables
-│   ├── layouts/                    # Auto-import layouts (prefix vide)
+│   ├── layouts/                    # Layouts Nuxt, nommés avec le préfixe du domaine
 │   ├── stores/                     # Auto-import (Pinia, etc.)
 │   ├── utils/                      # Auto-import fonctions
-│   └── i18n/                       # Traductions du domaine
+│   ├── i18n/                       # Traductions du domaine
 │       ├── fr.json
 │       └── en.json
+│   ├── assets/                     # Assets importés par Vite (images, styles, polices)
+│   └── public/                     # Assets statiques → /domains/authentication/...
 │
 ├── inventory/                      # Domaine parent avec sous-domaines
 │   ├── domain.config.ts            # hasSubDomains: true
@@ -238,6 +240,7 @@ app/domains/
 │           ├── domain.config.ts
 │           ├── pages/
 │           │   └── list.vue
+│           ├── public/             # → /domains/inventory/brands/...
 │           └── i18n/
 │               └── fr.json
 │
@@ -437,11 +440,12 @@ Clé i18n compilée exemple : `inventory.brands` (selon `domainSegmentKeyFormat`
 
 Scan **fast-glob** des dossiers suivants sous chaque domaine :
 
-| Dossier | Mécanisme Nuxt |
-|---------|----------------|
+| Dossier | Traitement |
+|---------|------------|
 | `components/` | `addComponentsDir` |
 | `layouts/**/*.vue` | `addLayout`; le nom du layout est préfixé par le domaine pour éviter les collisions |
 | `composables/`, `stores/`, `utils/` | `addImportsDir` |
+| `public/` | `nitro.publicAssets`; servi sous `/domains/<chemin-du-domaine>/` sans import |
 
 Les fichiers sous `pages/` ne sont **pas** auto-importés comme composants.
 

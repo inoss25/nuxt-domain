@@ -13,6 +13,7 @@ import { loadDomainConfigs } from './runtime/config-loader'
 import { getDomainConfigCache } from '../shared/runtime/config-loader'
 import { generateDomainRoutes } from './runtime/route-generator'
 import { normalizeDomainParts, isIgnoredDomainPath } from './runtime/utils'
+import { getDomainPublicAssets } from './runtime/public-assets'
 import { writeRouteDoc } from './runtime/route-doc'
 import {
     fileIsUnderRoot,
@@ -62,37 +63,41 @@ async function registerDomainAutoImports(
     domainConfigs: Awaited<ReturnType<typeof loadDomainConfigs>>,
     options: DomainPagesOptions,
     debugLog: (...args: unknown[]) => void
-) {
-    // Un seul parcours de l'arborescence pour les dossiers auto-importés et layouts Vue.
-    const found = await fg(
-        [
-            '**/components',
-            '**/composables',
-            '**/layouts/**/*.vue',
-            '**/stores',
-            '**/utils',
-        ],
-        {
+): Promise<string[]> {
+    // Les dossiers et fichiers sont parcourus séparément pour conserver
+    // l'auto-import des dossiers et enregistrer les layouts Vue.
+    const [foundDirs, foundLayouts] = await Promise.all([
+        fg(
+            [
+                '**/components',
+                '**/composables',
+                '**/public',
+                '**/stores',
+                '**/utils',
+            ],
+            {
+                cwd: domainsRoot,
+                onlyDirectories: true,
+                ignore: [...AUTO_IMPORT_IGNORE],
+            }
+        ),
+        fg('**/layouts/**/*.vue', {
             cwd: domainsRoot,
             ignore: [...AUTO_IMPORT_IGNORE],
-        }
-    )
+        }),
+    ])
 
     const byKind: Record<string, string[]> = {
         components: [],
         composables: [],
-        layouts: [],
+        public: [],
         stores: [],
         utils: [],
     }
-    for (const dir of found) {
-        if (/(^|[\\/])layouts[\\/]/.test(dir)) byKind.layouts!.push(dir)
-        else byKind[basename(dir)]?.push(dir)
-    }
+    for (const dir of foundDirs) byKind[basename(dir)]?.push(dir)
 
     const componentDirs = byKind.components!
     const composableDirs = byKind.composables!
-    const layoutDirs = byKind.layouts!
     const storeDirs = byKind.stores!
     const utilDirs = byKind.utils!
 
@@ -102,13 +107,23 @@ async function registerDomainAutoImports(
             pathPrefix: false,
         })
     }
-    for (const file of layoutDirs) {
-        const domainPath = dirname(file).split(/[\\/]layouts(?:[\\/]|$)/)[0] ?? ''
+    for (const file of foundLayouts) {
+        const domainPath =
+            dirname(file).split(/[\\/]layouts(?:[\\/]|$)/)[0] ?? ''
         const rawDomainParts = domainPath.split(/[\\/]/).filter(Boolean)
         if (isIgnoredDomainPath(rawDomainParts)) continue
-        const domainName = normalizeDomainParts(domainConfigs, options, rawDomainParts, debugLog).join('-')
+        const domainName = normalizeDomainParts(
+            domainConfigs,
+            options,
+            rawDomainParts,
+            debugLog
+        ).join('-')
         const layoutPath = file.split(/[\\/]layouts[\\/]/).at(-1) ?? ''
-        const layoutName = layoutPath.replace(/\.vue$/i, '').split(/[\\/]/).filter(Boolean).join('-')
+        const layoutName = layoutPath
+            .replace(/\.vue$/i, '')
+            .split(/[\\/]/)
+            .filter(Boolean)
+            .join('-')
         const name = `${domainName}-${layoutName}`
             .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
             .replace(/[^a-zA-Z0-9-]/g, '-')
@@ -119,6 +134,7 @@ async function registerDomainAutoImports(
     for (const dir of [...composableDirs, ...storeDirs, ...utilDirs]) {
         addImport(resolve(domainsRoot, dir))
     }
+    return byKind.public!
 }
 
 export default defineNuxtModule<DomainPagesOptions>({
@@ -190,13 +206,30 @@ export default defineNuxtModule<DomainPagesOptions>({
             configCache
         )
 
-        await registerDomainAutoImports(
+        const domainPublicDirs = await registerDomainAutoImports(
             domainsRoot,
             addComponentsDir,
             addImportsDir,
             domainConfigs,
             options,
             debugLog
+        )
+
+        const nuxtOptionsWithNitro = nuxt.options as typeof nuxt.options & {
+            nitro?: {
+                publicAssets?: ReturnType<typeof getDomainPublicAssets>
+            }
+        }
+        nuxtOptionsWithNitro.nitro ??= {}
+        nuxtOptionsWithNitro.nitro.publicAssets ??= []
+        nuxtOptionsWithNitro.nitro.publicAssets.push(
+            ...getDomainPublicAssets(
+                domainsRoot,
+                domainPublicDirs,
+                domainConfigs,
+                options,
+                debugLog
+            )
         )
 
         extendPages(async (pages) => {

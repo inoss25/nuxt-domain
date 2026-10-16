@@ -3,6 +3,7 @@
 ## 0.2.0 — 2026-10-16
 
 - Enregistre les fichiers `layouts/**/*.vue` des domaines comme de vrais layouts Nuxt avec `addLayout`.
+- Sert les dossiers `public/` des domaines sous des URL isolées, et ajoute `public` aux dossiers proposés par `create-domain`.
 - Ajoute `layout` à `domain.config.ts` pour appliquer un layout par défaut aux pages d’un domaine; les sous-domaines héritent du réglage et peuvent le remplacer.
 - Préfixe les noms de layouts par le domaine pour éviter les collisions et documente leur usage avec `<NuxtLayout>` et `definePageMeta`.
 

@@ -24,7 +24,7 @@ Options:
   --i18n <codes>           Locales JSON (ex: fr,en)
   --prefix <segment>       prefix dans domain.config.ts (défaut: nom du domaine)
   --only <dirs>            Dossiers à créer, séparés par des virgules
-                           pages,components,composables,layouts,stores,utils
+                           pages,components,composables,layouts,stores,utils,public
   --no-pages               Ne pas créer pages/index.vue
   -h, --help               Aide
 
@@ -123,6 +123,7 @@ const allDirs = [
     'layouts',
     'stores',
     'utils',
+    'public',
 ]
 let dirs = allDirs
 if (onlyDirsRaw !== undefined) {
