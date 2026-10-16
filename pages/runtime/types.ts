@@ -11,6 +11,8 @@ export interface DomainConfig {
   prefixSubDomains?: boolean
   subDomainsDirName?: string
   home?: boolean
+  /** Layout Nuxt du domaine, relatif à layouts/ (ex. "default" ou "auth/login"). */
+  layout?: string | false
   middleware?: string[] | string
   meta?: Record<string, unknown>
   routes?: Record<string, DomainRouteOverride>

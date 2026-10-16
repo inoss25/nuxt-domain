@@ -23,6 +23,7 @@ export interface DomainConfig extends DomainConfigPathFields {
   noPrefix?: boolean
   prefixSubDomains?: boolean
   home?: boolean
+  layout?: string | false
   middleware?: string[] | string
   meta?: Record<string, unknown>
   routes?: Record<string, DomainRouteOverride>

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 — 2026-10-16
+
+- Enregistre les fichiers `layouts/**/*.vue` des domaines comme de vrais layouts Nuxt avec `addLayout`.
+- Ajoute `layout` à `domain.config.ts` pour appliquer un layout par défaut aux pages d’un domaine; les sous-domaines héritent du réglage et peuvent le remplacer.
+- Préfixe les noms de layouts par le domaine pour éviter les collisions et documente leur usage avec `<NuxtLayout>` et `definePageMeta`.
+
 ## 0.1.2 — 2026-10-15
 
 - Améliore le README npm avec un démarrage rapide, un exemple de routes générées et les liens vers la documentation.

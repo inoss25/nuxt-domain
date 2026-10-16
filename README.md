@@ -58,6 +58,8 @@ Créez un domaine avec une configuration et une page :
 ```text
 app/domains/account/
 ├── domain.config.ts
+├── layouts/
+│   └── default.vue
 └── pages/
     └── profile.vue
 ```
@@ -69,6 +71,7 @@ import { defineDomainConfig } from '#domain-pages'
 export default defineDomainConfig({
   enabled: true,
   prefix: 'account',
+  layout: 'default',
 })
 ```
 
@@ -191,7 +194,7 @@ pnpm create-domain billing --only pages,composables,utils
 ## Ce que le module génère
 
 - **Routes Nuxt** depuis `pages/`, avec prise en charge des paramètres, des sous-domaines, des routes enfants et des options par domaine.
-- **Auto-imports** depuis `components/`, `composables/`, `layouts/`, `stores/` et `utils/`.
+- **Layouts Nuxt de domaine** depuis `layouts/`, et auto-imports depuis `components/`, `composables/`, `stores/` et `utils/`.
 - **Fichiers de locales** en fusionnant les JSON des domaines et des dossiers partagés.
 - **Documentation et types de routes** générés dans `.nuxt/domain-pages` par défaut.
 
@@ -212,6 +215,14 @@ app/domains/
             ├── domain.config.ts
             └── pages/
 ```
+
+### Layouts de domaine
+
+Les fichiers `.vue` de `layouts/` sont enregistrés comme de vrais layouts Nuxt via `addLayout`. Leur nom est préfixé par le domaine pour éviter les collisions : `app/domains/account/layouts/default.vue` devient `account-default`.
+
+Dans `domain.config.ts`, `layout: 'default'` applique ce layout par défaut à toutes les pages du domaine. Les sous-domaines héritent du réglage, qu’ils peuvent remplacer dans leur propre configuration. Une page peut choisir un autre layout enregistré ou désactiver le layout avec `definePageMeta({ layout: false })`.
+
+Comme dans Nuxt standard, `app.vue` doit contenir `<NuxtLayout><NuxtPage /></NuxtLayout>`. Sans option `layout` dans la configuration du domaine, Nuxt garde son fonctionnement habituel et utilise le layout global `default` s’il existe.
 
 ## Documentation
 

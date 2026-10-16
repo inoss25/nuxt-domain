@@ -93,9 +93,11 @@ export default defineDomainConfig({
     // Middleware global pour toutes les routes du domaine
     middleware: 'auth',
 
+    // Layout Nuxt du domaine (app/domains/auth/layouts/auth.vue)
+    layout: 'auth',
+
     // Meta global pour toutes les routes du domaine
     meta: {
-        layout: 'auth',
         requiresAuth: false,
     },
 
