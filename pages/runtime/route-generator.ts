@@ -24,6 +24,16 @@ const toArray = (mw?: string[] | string) => {
     return Array.isArray(mw) ? mw : [mw]
 }
 
+function toNuxtLayoutName(domainId: string, layout: string): string {
+    const domainName = domainId.replace(/[\\/]+/g, '-')
+    const layoutName = layout.replace(/\\/g, '/').replace(/\.vue$/i, '').replace(/\//g, '-')
+    return `${domainName}-${layoutName}`
+        .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+        .replace(/[^a-zA-Z0-9-]/g, '-')
+        .replace(/-+/g, '-')
+        .toLowerCase()
+}
+
 /* ------------------------------------------------------------------ */
 /*  Domain settings helpers                                            */
 /* ------------------------------------------------------------------ */
@@ -89,7 +99,16 @@ function getEffectiveDomainSettings(
         }
     }
 
-    return { chain, enabled, noPrefix, hasSubDomains, middleware, meta, routes, home }
+    let layout: DomainConfig['layout']
+    for (let i = chain.length - 1; i >= 0; i--) {
+        const entry = chain[i]
+        if (entry && entry.config.layout !== undefined) {
+            layout = entry.config.layout
+            break
+        }
+    }
+
+    return { chain, enabled, noPrefix, hasSubDomains, middleware, meta, routes, home, layout }
 }
 
 function getDomainPrefixParts(
@@ -240,6 +259,11 @@ async function _generateDomainRoutes(
 
         /* ---------- CHILD ---------- */
         if (isChild) {
+            if (typeof effective.layout === 'string') {
+                route.meta = { layout: toNuxtLayoutName(domainId, effective.layout) }
+            } else if (effective.layout === false) {
+                route.meta = { layout: false }
+            }
             const parentKey = normalizeKey(
                 `${domainPrefixPath ? domainPrefixPath + '/' : ''}${segments
                     .slice(0, segments.indexOf(childrenDirName))
@@ -278,6 +302,14 @@ async function _generateDomainRoutes(
         /* ---------- DOMAIN META ---------- */
         if (effective.middleware.length > 0) route.middleware = effective.middleware
         if (Object.keys(effective.meta).length > 0) route.meta = { ...effective.meta }
+        if (typeof effective.layout === 'string') {
+            route.meta = {
+                ...(route.meta || {}),
+                layout: toNuxtLayoutName(domainId, effective.layout),
+            }
+        } else if (effective.layout === false) {
+            route.meta = { ...(route.meta || {}), layout: false }
+        }
 
         /* ---------- ROUTE OVERRIDE ---------- */
         const override = effective.routes?.[rawPath.replace(/\.vue$/, '')]

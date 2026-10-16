@@ -171,6 +171,15 @@ Sans page par défaut :
 pnpm create-domain reports --no-pages
 ```
 
+Ne créez que les dossiers dont ce domaine a besoin avec `--only` (liste séparée par des virgules) :
+
+```bash
+pnpm create-domain billing --only pages,composables,utils
+pnpm create-domain reporting --only components,stores --i18n fr,en
+```
+
+Valeurs acceptées : `pages`, `components`, `composables`, `layouts`, `stores` et `utils`. Si `--only` est absent, la CLI crée les six dossiers comme auparavant. `domain.config.ts` est toujours créé. `--no-pages` empêche de générer `pages/index.vue`, y compris si `pages` figure dans la sélection. Les traductions sont sélectionnées séparément avec `--i18n <codes>`.
+
 Équivalent sans script npm :
 
 ```bash
@@ -360,8 +369,9 @@ export default defineDomainConfig({
   home: false,
   hasSubDomains: false,
   prefixSubDomains: true,
+  layout: 'default',
   middleware: 'auth',
-  meta: { layout: 'default' },
+  meta: { title: 'Authentification' },
   routes: {
     login: {
       path: '/signin',
@@ -382,7 +392,10 @@ export default defineDomainConfig({
 | `hasSubDomains` | Autorise `domains/<sous-domaine>/`. |
 | `prefixSubDomains` | Inclure le segment du sous-domaine dans l’URL. |
 | `middleware` / `meta` | Appliqués à toutes les pages du domaine. |
+| `layout` | Layout Nuxt du domaine, relatif à `layouts/` (ex. `default` → `account-default`). Les sous-domaines héritent du layout; une page peut le remplacer avec `definePageMeta`. `false` désactive le layout pour le domaine. |
 | `routes` | Overrides par fichier page (clé = nom de fichier sans `.vue`). |
+
+Les layouts `.vue` sont enregistrés avec `addLayout`, sous un nom préfixé par le domaine pour éviter les collisions. Comme dans Nuxt standard, `app.vue` doit afficher `<NuxtLayout><NuxtPage /></NuxtLayout>`. Voir [Layouts de domaine](../README.md#layouts-de-domaine) pour l’usage complet.
 
 Chargement : **jiti** lit le TypeScript à la volée ; erreurs affichées dans la console avec le chemin du fichier.
 
@@ -427,7 +440,7 @@ Scan **fast-glob** des dossiers suivants sous chaque domaine :
 | Dossier | Mécanisme Nuxt |
 |---------|----------------|
 | `components/` | `addComponentsDir` |
-| `layouts/` | `addComponentsDir` (prefix vide) |
+| `layouts/**/*.vue` | `addLayout`; le nom du layout est préfixé par le domaine pour éviter les collisions |
 | `composables/`, `stores/`, `utils/` | `addImportsDir` |
 
 Les fichiers sous `pages/` ne sont **pas** auto-importés comme composants.

@@ -2,6 +2,7 @@ import {
     defineNuxtModule,
     extendPages,
     addComponentsDir,
+    addLayout,
     addImportsDir,
 } from 'nuxt/kit'
 import fg from 'fast-glob'
@@ -11,6 +12,7 @@ import type { DomainPagesOptions, DomainRouteDocOptions } from './runtime/types'
 import { loadDomainConfigs } from './runtime/config-loader'
 import { getDomainConfigCache } from '../shared/runtime/config-loader'
 import { generateDomainRoutes } from './runtime/route-generator'
+import { normalizeDomainParts, isIgnoredDomainPath } from './runtime/utils'
 import { writeRouteDoc } from './runtime/route-doc'
 import {
     fileIsUnderRoot,
@@ -56,20 +58,22 @@ function isWatchEnabled(options: DomainPagesOptions, nuxtDev: boolean): boolean 
 async function registerDomainAutoImports(
     domainsRoot: string,
     addComponent: typeof addComponentsDir,
-    addImport: typeof addImportsDir
+    addImport: typeof addImportsDir,
+    domainConfigs: Awaited<ReturnType<typeof loadDomainConfigs>>,
+    options: DomainPagesOptions,
+    debugLog: (...args: unknown[]) => void
 ) {
-    // Un seul parcours de l'arborescence pour les 5 types de dossiers.
+    // Un seul parcours de l'arborescence pour les dossiers auto-importés et layouts Vue.
     const found = await fg(
         [
             '**/components',
             '**/composables',
-            '**/layouts',
+            '**/layouts/**/*.vue',
             '**/stores',
             '**/utils',
         ],
         {
             cwd: domainsRoot,
-            onlyDirectories: true,
             ignore: [...AUTO_IMPORT_IGNORE],
         }
     )
@@ -81,7 +85,10 @@ async function registerDomainAutoImports(
         stores: [],
         utils: [],
     }
-    for (const dir of found) byKind[basename(dir)]?.push(dir)
+    for (const dir of found) {
+        if (/(^|[\\/])layouts[\\/]/.test(dir)) byKind.layouts!.push(dir)
+        else byKind[basename(dir)]?.push(dir)
+    }
 
     const componentDirs = byKind.components!
     const composableDirs = byKind.composables!
@@ -95,12 +102,19 @@ async function registerDomainAutoImports(
             pathPrefix: false,
         })
     }
-    for (const dir of layoutDirs) {
-        addComponent({
-            path: resolve(domainsRoot, dir),
-            pathPrefix: false,
-            prefix: '',
-        })
+    for (const file of layoutDirs) {
+        const domainPath = dirname(file).split(/[\\/]layouts(?:[\\/]|$)/)[0] ?? ''
+        const rawDomainParts = domainPath.split(/[\\/]/).filter(Boolean)
+        if (isIgnoredDomainPath(rawDomainParts)) continue
+        const domainName = normalizeDomainParts(domainConfigs, options, rawDomainParts, debugLog).join('-')
+        const layoutPath = file.split(/[\\/]layouts[\\/]/).at(-1) ?? ''
+        const layoutName = layoutPath.replace(/\.vue$/i, '').split(/[\\/]/).filter(Boolean).join('-')
+        const name = `${domainName}-${layoutName}`
+            .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+            .replace(/[^a-zA-Z0-9-]/g, '-')
+            .replace(/-+/g, '-')
+            .toLowerCase()
+        addLayout(resolve(domainsRoot, file), name)
     }
     for (const dir of [...composableDirs, ...storeDirs, ...utilDirs]) {
         addImport(resolve(domainsRoot, dir))
@@ -179,7 +193,10 @@ export default defineNuxtModule<DomainPagesOptions>({
         await registerDomainAutoImports(
             domainsRoot,
             addComponentsDir,
-            addImportsDir
+            addImportsDir,
+            domainConfigs,
+            options,
+            debugLog
         )
 
         extendPages(async (pages) => {

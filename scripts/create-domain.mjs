@@ -23,12 +23,15 @@ Options:
                            Défaut: kebab-case ou DOMAIN_NAME_FORMAT
   --i18n <codes>           Locales JSON (ex: fr,en)
   --prefix <segment>       prefix dans domain.config.ts (défaut: nom du domaine)
+  --only <dirs>            Dossiers à créer, séparés par des virgules
+                           pages,components,composables,layouts,stores,utils
   --no-pages               Ne pas créer pages/index.vue
   -h, --help               Aide
 
 Exemples:
   pnpm create-domain authentication
   pnpm create-domain shop --i18n fr,en --name-format kebab-case
+  pnpm create-domain billing --only pages,composables,utils
 `)
 }
 
@@ -37,7 +40,8 @@ let nameFormatRaw = process.env.DOMAIN_NAME_FORMAT ?? 'kebab-case'
 let name = ''
 let i18nLocales = []
 let prefix = ''
-let withPages = true
+let onlyDirsRaw
+let noPages = false
 
 for (let i = 0; i < args.length; i++) {
     const arg = args[i]
@@ -62,8 +66,12 @@ for (let i = 0; i < args.length; i++) {
         prefix = args[++i] ?? ''
         continue
     }
+    if (arg === '--only') {
+        onlyDirsRaw = args[++i] ?? ''
+        continue
+    }
     if (arg === '--no-pages') {
-        withPages = false
+        noPages = true
         continue
     }
     if (!arg.startsWith('-') && !name) {
@@ -108,6 +116,36 @@ if (existsSync(domainRoot)) {
 
 const routePrefix = prefix || name
 
+const allDirs = [
+    'pages',
+    'components',
+    'composables',
+    'layouts',
+    'stores',
+    'utils',
+]
+let dirs = allDirs
+if (onlyDirsRaw !== undefined) {
+    const requestedDirs = onlyDirsRaw
+        .split(',')
+        .map((dir) => dir.trim())
+        .filter(Boolean)
+    const invalidDirs = requestedDirs.filter((dir) => !allDirs.includes(dir))
+    if (requestedDirs.length === 0 || invalidDirs.length > 0) {
+        console.error(
+            requestedDirs.length === 0
+                ? 'Erreur: --only doit contenir au moins un dossier.'
+                : `Erreur: dossier(s) inconnu(s): ${invalidDirs.join(', ')}. ` +
+                    `Choix disponibles: ${allDirs.join(', ')}.`
+        )
+        usage()
+        process.exit(1)
+    }
+    dirs = [...new Set(requestedDirs)]
+}
+
+const withPages = dirs.includes('pages') && !noPages
+
 const domainConfig = `import { defineDomainConfig } from '#domain-pages'
 
 export default defineDomainConfig({
@@ -126,15 +164,6 @@ const indexVue = `<script setup lang="ts">
   </div>
 </template>
 `
-
-const dirs = [
-    'pages',
-    'components',
-    'composables',
-    'layouts',
-    'stores',
-    'utils',
-]
 
 for (const dir of dirs) {
     mkdirSync(resolve(domainRoot, dir), { recursive: true })
