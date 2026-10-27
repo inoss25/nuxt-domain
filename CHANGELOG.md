@@ -1,6 +1,6 @@
 # Changelog
 
-## Non publié
+## 0.5.0 — 2026-10-27
 
 - **Rupture** : supprime l’option `pages.noPrefixDomains`, dépréciée ; utilisez `noPrefix: true` dans le `domain.config.ts` du domaine.
 - Publie un build (`dist/`, JavaScript + déclarations `.d.ts`) généré avec `@nuxt/module-builder` au lieu des sources TypeScript ; les alias `#domain-pages` et `#domain-shared` pointent vers `dist/runtime`.
