@@ -54,23 +54,17 @@
     "dev:typecheck": "nuxi typecheck playground"
   },
   "dependencies": {
+    "@nuxtjs/i18n": "^10.6.0",
     "consola": "^3.4.2",
     "fast-glob": "^3.3.3",
     "jiti": "^2.7.0"
   },
   "peerDependencies": {
-    "@nuxtjs/i18n": ">=8.0.0",
-    "nuxt": ">=3.12.0"
-  },
-  "peerDependenciesMeta": {
-    "@nuxtjs/i18n": {
-      "optional": true
-    }
+    "nuxt": "^3.19.0 || >=4.1.0"
   },
   "devDependencies": {
     "@nuxt/module-builder": "^1.0.3",
     "@nuxt/schema": "^4.5.2",
-    "@nuxtjs/i18n": "^10.6.0",
     "@types/node": "^24.19.2",
     "nuxt": "^4.5.2",
     "typescript": "^6.0.3",

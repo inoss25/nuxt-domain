@@ -19,16 +19,15 @@ app/domains/
 
 ## Compatibility
 
-- Nuxt **3.12 or later**
-- `@nuxtjs/i18n` **8 or later**
+- Nuxt **3.19+** or **4.1+**
 - A Node.js version supported by your Nuxt version
 
-These are the minimum versions declared by the package. The module must be registered before `@nuxtjs/i18n`.
+[`@nuxtjs/i18n`](https://i18n.nuxtjs.org/) (v10) ships with nuxt-domain and is installed and configured automatically.
 
 ## Installation
 
 ```bash
-pnpm add nuxt-domain @nuxtjs/i18n
+pnpm add nuxt-domain
 ```
 
 ## Quick setup
@@ -37,23 +36,32 @@ Add the module to `nuxt.config.ts`:
 
 ```ts
 export default defineNuxtConfig({
-  modules: ['nuxt-domain', '@nuxtjs/i18n'],
+  modules: ['nuxt-domain'],
   domain: {
-    domainsDir: 'app/domains',
     i18n: {
-      sharedI18nDirs: ['app/shared/i18n'],
+      locales: ['en', 'fr'],
+      defaultLocale: 'en',
     },
-  },
-  i18n: {
-    langDir: 'locales',
-    defaultLocale: 'en',
-    locales: [
-      { code: 'en', file: 'en.json' },
-      { code: 'fr', file: 'fr.json' },
-    ],
   },
 })
 ```
+
+nuxt-domain generates one `<code>.json` file per locale and hands them to `@nuxtjs/i18n`: no `langDir` nor `file` to configure. Any other [`@nuxtjs/i18n` option](https://i18n.nuxtjs.org/docs/getting-started) still goes under the usual `i18n` key and is merged in:
+
+```ts
+export default defineNuxtConfig({
+  modules: ['nuxt-domain'],
+  domain: {
+    i18n: { locales: ['en', 'fr'], defaultLocale: 'en' },
+  },
+  i18n: {
+    strategy: 'prefix_except_default',
+    detectBrowserLanguage: { useCookie: true },
+  },
+})
+```
+
+Locales can also be objects, e.g. `{ code: 'en', name: 'English' }` (`file` defaults to `en.json`). Projects that already list `@nuxtjs/i18n` in `modules` with their own `i18n.locales` keep working unchanged, in any module order.
 
 Create a domain with a config and a page:
 
@@ -85,7 +93,7 @@ The `domain` key holds the whole `nuxt-domain` configuration. Shared options liv
 
 ```ts
 export default defineNuxtConfig({
-  modules: ['nuxt-domain', '@nuxtjs/i18n'],
+  modules: ['nuxt-domain'],
   domain: {
     // Where the module looks for domain folders.
     domainsDir: 'app/domains',
@@ -116,8 +124,10 @@ export default defineNuxtConfig({
       },
     },
 
-    // Translation files.
+    // Translation files (and the @nuxtjs/i18n locales).
     i18n: {
+      locales: ['en', 'fr'],
+      defaultLocale: 'en',
       sharedI18nDirs: ['app/shared/i18n'],
       sharedMessagesNamespace: 'global',
       outputDir: 'i18n/locales',
@@ -157,13 +167,15 @@ Watch options only apply in development; they never affect production routes. Wh
 
 ### `i18n`: translation files
 
-Without `@nuxtjs/i18n` in the project, pass `i18n: false` to disable translation generation entirely.
+Pass `i18n: false` to disable translations entirely: `@nuxtjs/i18n` is then not installed.
 
 | Option | Default | Why and when to change it |
 |---|---|---|
+| `locales` | — | Locales handed to `@nuxtjs/i18n`, as codes (`'en'`) or objects (`{ code: 'en', name: 'English' }`). Each one reads the generated `<code>.json`. Ignored when `i18n.locales` is set. |
+| `defaultLocale` | — | Default locale handed to `@nuxtjs/i18n`. `i18n.defaultLocale` wins when both are set. |
 | `sharedI18nDirs` | `['app/shared/i18n']` | Folders for translations used by several domains (navigation, app name, common messages). |
 | `sharedMessagesNamespace` | `'global'` | Parent key of shared translations in the compiled JSON. |
-| `outputDir` | `'i18n/locales'` | Where the JSON files for `@nuxtjs/i18n` are generated. It must match the i18n `langDir`; with `langDir: 'locales'` the default works. |
+| `outputDir` | `'i18n/locales'` | Where the JSON files for `@nuxtjs/i18n` are generated. With `locales`, they are registered from this folder automatically. |
 | `domainKeyFormat` | `'snake_case'` | Formats domain segments in compiled keys. For instance, a `user-profile` folder becomes the `user_profile` key. |
 | `domainSegmentKeyFormat` | `'snake_case'` (deprecated) | Former name of `domainKeyFormat`. |
 | `keyFormat` | no validation | Checks the key convention in source JSON files. |
