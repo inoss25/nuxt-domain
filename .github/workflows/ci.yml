@@ -44,7 +44,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm add -D nuxt@~3.19.0 @nuxt/schema@~3.19.0
       # Le tsconfig du playground référence les fichiers générés par Nuxt 4 (tsconfig.app.json…).
-      - run: echo '{ "extends": "./.nuxt/tsconfig.json" }' > playground/tsconfig.json
+      - run: |
+          echo '{ "extends": "./.nuxt/tsconfig.json" }' > playground/tsconfig.json
       - run: pnpm test
       - run: pnpm build
       - run: pnpm dev:build
