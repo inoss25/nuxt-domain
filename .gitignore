@@ -3,3 +3,5 @@ dist/
 .nuxt/
 *.log
 .DS_Store
+.output/
+playground/i18n/locales/

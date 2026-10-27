@@ -51,7 +51,11 @@
     "create-domain": "node ./scripts/create-domain.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "benchmark": "node ./scripts/benchmark.mjs"
+    "benchmark": "node ./scripts/benchmark.mjs",
+    "dev": "nuxi dev playground",
+    "dev:prepare": "nuxi prepare playground",
+    "dev:build": "nuxi build playground",
+    "dev:typecheck": "nuxi typecheck playground"
   },
   "dependencies": {
     "fast-glob": "^3.3.3",
@@ -68,9 +72,11 @@
   },
   "devDependencies": {
     "@nuxt/schema": "^4.5.2",
+    "@nuxtjs/i18n": "^10.6.0",
     "@types/node": "^24.19.2",
     "nuxt": "^4.5.2",
     "typescript": "^6.0.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "vue-tsc": "^3.3.13"
   }
 }
