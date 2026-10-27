@@ -26,7 +26,7 @@ Installez le package **`nuxt-domain`** (voir [docs/GUIDE.md](../docs/GUIDE.md)).
 
 ```typescript
 export default defineNuxtConfig({
-    modules: ['nuxt-domain', '@nuxtjs/i18n'],
+    modules: ['nuxt-domain'],
     domain: {
         domainsDir: 'app/domains',
         pages: {

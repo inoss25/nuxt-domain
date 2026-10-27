@@ -19,16 +19,15 @@ app/domains/
 
 ## Compatibilité
 
-- Nuxt **3.12 ou supérieur**
-- `@nuxtjs/i18n` **8 ou supérieur**
+- Nuxt **3.19+** ou **4.1+**
 - Node.js compatible avec la version de Nuxt utilisée
 
-Ce sont les versions minimales déclarées par le package. Le module doit être enregistré avant `@nuxtjs/i18n`.
+[`@nuxtjs/i18n`](https://i18n.nuxtjs.org/) (v10) est fourni avec nuxt-domain, puis installé et configuré automatiquement.
 
 ## Installation
 
 ```bash
-pnpm add nuxt-domain @nuxtjs/i18n
+pnpm add nuxt-domain
 ```
 
 ## Configuration rapide
@@ -37,23 +36,32 @@ Ajoutez le module à `nuxt.config.ts` :
 
 ```ts
 export default defineNuxtConfig({
-  modules: ['nuxt-domain', '@nuxtjs/i18n'],
+  modules: ['nuxt-domain'],
   domain: {
-    domainsDir: 'app/domains',
     i18n: {
-      sharedI18nDirs: ['app/shared/i18n'],
+      locales: ['fr', 'en'],
+      defaultLocale: 'fr',
     },
-  },
-  i18n: {
-    langDir: 'locales',
-    defaultLocale: 'fr',
-    locales: [
-      { code: 'fr', file: 'fr.json' },
-      { code: 'en', file: 'en.json' },
-    ],
   },
 })
 ```
+
+nuxt-domain génère un fichier `<code>.json` par locale et le transmet à `@nuxtjs/i18n` : ni `langDir` ni `file` à configurer. Les autres options de `@nuxtjs/i18n` restent sous la clé `i18n` habituelle et sont fusionnées :
+
+```ts
+export default defineNuxtConfig({
+  modules: ['nuxt-domain'],
+  domain: {
+    i18n: { locales: ['fr', 'en'], defaultLocale: 'fr' },
+  },
+  i18n: {
+    strategy: 'prefix_except_default',
+    detectBrowserLanguage: { useCookie: true },
+  },
+})
+```
+
+Une locale peut aussi être un objet, par exemple `{ code: 'fr', name: 'Français' }` (`file` vaut `fr.json` par défaut). Les projets qui déclarent déjà `@nuxtjs/i18n` dans `modules` avec leurs propres `i18n.locales` continuent de fonctionner sans changement, quel que soit l’ordre des modules.
 
 Créez un domaine avec une configuration et une page :
 
@@ -85,7 +93,7 @@ La clé `domain` regroupe la configuration de `nuxt-domain`. Les options commune
 
 ```ts
 export default defineNuxtConfig({
-  modules: ['nuxt-domain', '@nuxtjs/i18n'],
+  modules: ['nuxt-domain'],
   domain: {
     // Où le module cherche les dossiers métier.
     domainsDir: 'app/domains',
@@ -116,8 +124,10 @@ export default defineNuxtConfig({
       },
     },
 
-    // Réglages propres aux fichiers de traduction.
+    // Fichiers de traduction (et locales de @nuxtjs/i18n).
     i18n: {
+      locales: ['fr', 'en'],
+      defaultLocale: 'fr',
       sharedI18nDirs: ['app/shared/i18n'],
       sharedMessagesNamespace: 'global',
       outputDir: 'i18n/locales',
@@ -128,14 +138,6 @@ export default defineNuxtConfig({
       watchSourcesInDev: true,
       watchDebounceMs: 250,
     },
-  },
-  i18n: {
-    langDir: 'locales',
-    defaultLocale: 'fr',
-    locales: [
-      { code: 'fr', file: 'fr.json' },
-      { code: 'en', file: 'en.json' },
-    ],
   },
 })
 ```
@@ -165,13 +167,15 @@ Les options de surveillance servent uniquement en développement; elles n’affe
 
 ### `i18n` : fichiers de traduction
 
-Sans `@nuxtjs/i18n` dans le projet, passe `i18n: false` pour désactiver entièrement la génération des traductions.
+Passe `i18n: false` pour désactiver entièrement les traductions : `@nuxtjs/i18n` n’est alors pas installé.
 
 | Option | Défaut | Pourquoi et quand la modifier |
 |---|---|---|
+| `locales` | — | Locales transmises à `@nuxtjs/i18n`, sous forme de codes (`'fr'`) ou d’objets (`{ code: 'fr', name: 'Français' }`). Chacune lit le `<code>.json` généré. Ignorée si `i18n.locales` est défini. |
+| `defaultLocale` | — | Locale par défaut transmise à `@nuxtjs/i18n`. `i18n.defaultLocale` l’emporte si les deux sont définies. |
 | `sharedI18nDirs` | `['app/shared/i18n']` | Dossiers pour les traductions utilisées par plusieurs domaines (navigation, nom de l’application, messages communs). Les placer ici évite de les dupliquer dans chaque domaine. |
 | `sharedMessagesNamespace` | `'global'` | Clé parente des traductions partagées dans le JSON compilé. Garde-la si tes appels utilisent `global.*`; change-la si tu veux un autre namespace. |
-| `outputDir` | `'i18n/locales'` | Emplacement des JSON générés pour `@nuxtjs/i18n`. Il doit correspondre au `langDir` configuré pour i18n; avec `langDir: 'locales'`, la valeur par défaut convient. |
+| `outputDir` | `'i18n/locales'` | Emplacement des JSON générés pour `@nuxtjs/i18n`. Avec `locales`, ils sont enregistrés depuis ce dossier automatiquement. |
 | `domainKeyFormat` | `'snake_case'` (hérité de l’option legacy) | Formate les segments de domaine dans les clés des traductions compilées. Par exemple, un dossier `user-profile` devient la clé `user_profile`. |
 | `domainSegmentKeyFormat` | `'snake_case'` (dépréciée) | Ancien réglage du format des clés de domaine. Utilise `domainKeyFormat` pour les nouveaux projets. |
 | `keyFormat` | aucune validation | Vérifie la convention des clés dans les JSON sources. Active-le pour repérer les écarts de style avant qu’ils se multiplient. |

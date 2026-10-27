@@ -28,7 +28,7 @@ jobs:
       - run: pnpm dev:build
       - run: pnpm dev:typecheck
 
-  # Versions minimales déclarées en peerDependencies (nuxt >=3.12, @nuxtjs/i18n >=8).
+  # Version minimale déclarée en peerDependencies (Nuxt 3.19, première avec moduleDependencies).
   # Non bloquant tant que cette combinaison n'a pas été validée une première fois.
   nuxt-3:
     name: Nuxt 3 (minimum)
@@ -42,7 +42,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm add -D nuxt@3.12 @nuxt/schema@3.12 @nuxtjs/i18n@8
+      - run: pnpm add -D nuxt@~3.19.0 @nuxt/schema@~3.19.0
       - run: pnpm test
       - run: pnpm build
       - run: pnpm dev:build

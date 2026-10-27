@@ -1,5 +1,13 @@
 # Changelog
 
+## Non publié
+
+- Installe et configure `@nuxtjs/i18n` automatiquement (`moduleDependencies`) : il devient une dépendance de nuxt-domain, `pnpm add nuxt-domain` suffit et l’ordre des modules n’a plus d’importance.
+- Ajoute `domain.i18n.locales` et `domain.i18n.defaultLocale` : les fichiers générés sont enregistrés auprès de `@nuxtjs/i18n` (hook `i18n:registerModule`), sans `langDir` ni `file` à renseigner. La clé `i18n` reste disponible pour les options avancées.
+- Garde le typage de la clé `i18n` de `nuxt.config` quand `@nuxtjs/i18n` n’est fourni que par nuxt-domain (pnpm).
+- **Rupture** : Nuxt **3.19+ ou 4.1+** requis (au lieu de 3.12+), et `@nuxtjs/i18n` 10. Les projets qui déclarent déjà `@nuxtjs/i18n` dans `modules` continuent de fonctionner.
+- Corrige les fins de ligne CRLF du binaire `create-domain` (cassé sous Linux/macOS) et force LF dans le dépôt (`.gitattributes`).
+
 ## 0.5.0 — 2026-10-27
 
 - **Rupture** : supprime l’option `pages.noPrefixDomains`, dépréciée ; utilisez `noPrefix: true` dans le `domain.config.ts` du domaine.

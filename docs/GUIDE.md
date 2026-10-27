@@ -45,8 +45,8 @@ Principe DDD : **un dossier = un domaine métier** (`authentication`, `dashboard
 
 | Package | Rôle |
 |---------|------|
-| **`nuxt`** (≥ 3.12, testé sur 4.x) | Héberge le module, hooks `extendPages`, alias Nuxt, build. |
-| **`@nuxtjs/i18n`** (≥ 8, testé sur 10.x) | Charge les locales compilées ; **obligatoire** si vous utilisez la partie i18n du module. |
+| **`nuxt`** (3.19+ ou 4.1+, testé sur 4.x) | Héberge le module, hooks `extendPages`, alias Nuxt, build. |
+| **`@nuxtjs/i18n`** (10.x, fourni) | Charge les locales compilées. Installé et configuré automatiquement par nuxt-domain ; non installé avec `domain.i18n: false`. |
 
 ### Fournis par **nuxt-domain** (dependencies npm)
 
@@ -71,18 +71,17 @@ Principe DDD : **un dossier = un domaine métier** (`authentication`, `dashboard
 ## Installation
 
 ```bash
-pnpm add nuxt-domain @nuxtjs/i18n
+pnpm add nuxt-domain
 # ou depuis GitHub :
-pnpm add github:inoss25/nuxt-domain @nuxtjs/i18n
+pnpm add github:inoss25/nuxt-domain
 ```
 
-**`nuxt.config.ts`** — le module **nuxt-domain** doit être enregistré **avant** `@nuxtjs/i18n` :
+**`nuxt.config.ts`** — `@nuxtjs/i18n` est installé par nuxt-domain, inutile de l’ajouter à `modules` :
 
 ```ts
 export default defineNuxtConfig({
   modules: [
     'nuxt-domain',
-    '@nuxtjs/i18n',
     // … autres modules
   ],
 
@@ -97,18 +96,16 @@ export default defineNuxtConfig({
       },
     },
     i18n: {
+      locales: ['fr', 'en'],
+      defaultLocale: 'fr',
       sharedI18nDirs: ['app/shared/i18n'],
       outputDir: 'i18n/locales',
     },
   },
 
+  // Options avancées de @nuxtjs/i18n (facultatif), fusionnées avec celles de nuxt-domain.
   i18n: {
-    langDir: 'locales',
-    defaultLocale: 'fr',
-    locales: [
-      { code: 'fr', file: 'fr.json' },
-      { code: 'en', file: 'en.json' },
-    ],
+    strategy: 'prefix_except_default',
   },
 })
 ```
@@ -540,7 +537,7 @@ Utilisables dans **`domain.config.ts`** de votre app. Pour l’IDE, ajoutez si b
 | Erreur `domain.config.ts` | Syntaxe TS, import `#domain-pages` (module non enregistré). |
 | Préfixe inattendu | Vérifier `prefix`, `noPrefix`. |
 | Clé i18n introuvable | Préfixe `global.` vs nom de domaine ; relancer dev après ajout JSON. |
-| `@nuxtjs/i18n` ne voit pas les fichiers | `nuxt-domain` **avant** i18n ; `langDir: 'locales'` ; fichiers dans `outputDir`. |
+| `@nuxtjs/i18n` ne voit pas les fichiers | Déclarer les locales dans `domain.i18n.locales` ; avec `i18n.locales` manuel, `langDir: 'locales'` et fichiers dans `outputDir`. |
 | Conflit `/` | Un seul domaine avec `home: true`. |
 
 ---
