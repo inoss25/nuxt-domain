@@ -1,6 +1,6 @@
 # Changelog
 
-## Non publié
+## 0.4.0 — 2026-10-27
 
 - Parcourt l’arborescence des domaines une seule fois par instance Nuxt (au lieu de 7 globs) et partage l’index entre la validation, les routes, les auto-imports et l’i18n : démarrage environ 5× plus rapide sur 200 domaines / 4 000 pages.
 - En dev, tient l’index à jour à partir des événements du watcher au lieu de rescanner le disque à chaque ajout de page.

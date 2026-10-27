@@ -1,6 +1,6 @@
 {
   "name": "nuxt-domain",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Architecture domain-driven pour Nuxt : routes, i18n et auto-imports par domaine",
   "type": "module",
   "license": "MIT",
