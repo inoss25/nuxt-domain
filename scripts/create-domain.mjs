@@ -4,12 +4,18 @@
  */
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { createJiti } from 'jiti'
 
-const jiti = createJiti(import.meta.url)
-const { conformsToNameFormat, resolveNameFormat, formatName } = jiti(
-    '../shared/runtime/naming.ts'
+// Package publié : `dist/` ; dépôt sans build : sources TypeScript via jiti.
+const builtNaming = fileURLToPath(
+    new URL('../dist/runtime/shared/naming.js', import.meta.url)
 )
+const { conformsToNameFormat, resolveNameFormat, formatName } = existsSync(
+    builtNaming
+)
+    ? await import(new URL('../dist/runtime/shared/naming.js', import.meta.url).href)
+    : await createJiti(import.meta.url).import('../src/runtime/shared/naming.ts')
 
 const args = process.argv.slice(2)
 

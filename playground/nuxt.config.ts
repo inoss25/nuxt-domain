@@ -1,7 +1,7 @@
 // Application de test du module : `pnpm dev` à la racine du dépôt.
 export default defineNuxtConfig({
   // `nuxt-domain` avant `@nuxtjs/i18n` : il renseigne `i18n.langDir`.
-  modules: ['../index', '@nuxtjs/i18n'],
+  modules: ['../src/module', '@nuxtjs/i18n'],
   compatibilityDate: '2026-10-01',
   devtools: { enabled: false },
 

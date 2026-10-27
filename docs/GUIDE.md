@@ -265,8 +265,8 @@ Interface principale : `DomainModuleOptions` (exportée depuis le package).
 | `subDomainsDirName` | `'domains'` | Nom du dossier marqueur des sous-domaines. |
 | `strict` | `false` | Si `true`, le build échoue sur conflits de routes **ou** clés i18n. |
 | `debug` | `false` | Logs détaillés `[domain-pages]` / `[domain-i18n]`. |
-| `pages` | `{}` | Options du sous-module pages (voir [pages/README.md](../pages/README.md)). |
-| `i18n` | `{}` | Options i18n (voir [i18n/README.md](../i18n/README.md)). |
+| `pages` | `{}` | Options du sous-module pages (voir [pages.md](./pages.md)). |
+| `i18n` | `{}` | Options i18n (voir [i18n.md](./i18n.md)). |
 
 Exemples d’options **`domain.pages`** :
 
@@ -525,8 +525,8 @@ Enregistrés au runtime par le sous-module pages :
 
 | Alias | Pointe vers |
 |-------|-------------|
-| `#domain-pages` | `pages/runtime` du package (helper `defineDomainConfig`, etc.) |
-| `#domain-shared` | `shared/runtime` |
+| `#domain-pages` | `runtime/pages` du package (`src/` en dev, `dist/` publié ; helper `defineDomainConfig`, etc.) |
+| `#domain-shared` | `runtime/shared` du package |
 
 Utilisables dans **`domain.config.ts`** de votre app. Pour l’IDE, ajoutez si besoin dans `nuxt.config` ou tsconfig généré par Nuxt.
 
@@ -548,7 +548,7 @@ Utilisables dans **`domain.config.ts`** de votre app. Pour l’IDE, ajoutez si b
 ## Références
 
 - [README principal](../README.md)
-- [Pages — détails routes](../pages/README.md)
-- [i18n — fusion locales](../i18n/README.md)
-- [Shared — utilitaires internes](../shared/README.md)
+- [Pages — détails routes](./pages.md)
+- [i18n — fusion locales](./i18n.md)
+- [Shared — utilitaires internes](./shared.md)
 - Dépôt : https://github.com/inoss25/nuxt-domain

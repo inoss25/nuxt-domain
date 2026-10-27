@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Linux + Windows : le module manipule beaucoup de chemins (\ et /).
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm dev:build
+      - run: pnpm dev:typecheck
+
+  # Versions minimales déclarées en peerDependencies (nuxt >=3.12, @nuxtjs/i18n >=8).
+  # Non bloquant tant que cette combinaison n'a pas été validée une première fois.
+  nuxt-3:
+    name: Nuxt 3 (minimum)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm add -D nuxt@3.12 @nuxt/schema@3.12 @nuxtjs/i18n@8
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm dev:build

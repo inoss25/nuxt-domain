@@ -1,9 +1,11 @@
 # nuxt-domain
 
-[![Version npm](https://img.shields.io/npm/v/nuxt-domain)](https://www.npmjs.com/package/nuxt-domain)
-[![Licence MIT](https://img.shields.io/github/license/inoss25/nuxt-domain)](https://github.com/inoss25/nuxt-domain/blob/main/LICENSE)
+[![npm version](https://img.shields.io/npm/v/nuxt-domain)](https://www.npmjs.com/package/nuxt-domain)
+[![MIT License](https://img.shields.io/github/license/inoss25/nuxt-domain)](https://github.com/inoss25/nuxt-domain/blob/main/LICENSE)
 
-**nuxt-domain** est un module Nuxt pour organiser une application par domaines métier. Il génère les routes depuis ces domaines, auto-importe leur code et rassemble leurs traductions pour [`@nuxtjs/i18n`](https://i18n.nuxtjs.org/).
+**English** · [Français](https://github.com/inoss25/nuxt-domain/blob/main/README.fr.md)
+
+**nuxt-domain** is a Nuxt module for organizing an application by business domain. It generates routes from those domains, auto-imports their code and gathers their translations for [`@nuxtjs/i18n`](https://i18n.nuxtjs.org/).
 
 ```text
 app/domains/
@@ -15,13 +17,13 @@ app/domains/
     └── pages/profile.vue    → /account/profile
 ```
 
-## Compatibilité
+## Compatibility
 
-- Nuxt **3.12 ou supérieur**
-- `@nuxtjs/i18n` **8 ou supérieur**
-- Node.js compatible avec la version de Nuxt utilisée
+- Nuxt **3.12 or later**
+- `@nuxtjs/i18n` **8 or later**
+- A Node.js version supported by your Nuxt version
 
-Ce sont les versions minimales déclarées par le package. Le module doit être enregistré avant `@nuxtjs/i18n`.
+These are the minimum versions declared by the package. The module must be registered before `@nuxtjs/i18n`.
 
 ## Installation
 
@@ -29,9 +31,9 @@ Ce sont les versions minimales déclarées par le package. Le module doit être 
 pnpm add nuxt-domain @nuxtjs/i18n
 ```
 
-## Configuration rapide
+## Quick setup
 
-Ajoutez le module à `nuxt.config.ts` :
+Add the module to `nuxt.config.ts`:
 
 ```ts
 export default defineNuxtConfig({
@@ -44,16 +46,16 @@ export default defineNuxtConfig({
   },
   i18n: {
     langDir: 'locales',
-    defaultLocale: 'fr',
+    defaultLocale: 'en',
     locales: [
-      { code: 'fr', file: 'fr.json' },
       { code: 'en', file: 'en.json' },
+      { code: 'fr', file: 'fr.json' },
     ],
   },
 })
 ```
 
-Créez un domaine avec une configuration et une page :
+Create a domain with a config and a page:
 
 ```text
 app/domains/account/
@@ -75,34 +77,34 @@ export default defineDomainConfig({
 })
 ```
 
-`pages/profile.vue` devient `/account/profile`. `pages/index.vue` devient `/account`. Les noms entre crochets créent des segments dynamiques : `pages/[id].vue` devient `/account/:id`.
+`pages/profile.vue` becomes `/account/profile` and `pages/index.vue` becomes `/account`. Bracketed names create dynamic segments: `pages/[id].vue` becomes `/account/:id`.
 
-## Toutes les options de `domain`
+## All `domain` options
 
-La clé `domain` regroupe la configuration de `nuxt-domain`. Les options communes sont définies à ce niveau pour que les routes et les traductions utilisent les mêmes dossiers et diagnostics.
+The `domain` key holds the whole `nuxt-domain` configuration. Shared options live at this level so routes and translations use the same folders and diagnostics.
 
 ```ts
 export default defineNuxtConfig({
   modules: ['nuxt-domain', '@nuxtjs/i18n'],
   domain: {
-    // Où le module cherche les dossiers métier.
+    // Where the module looks for domain folders.
     domainsDir: 'app/domains',
 
-    // Nom du dossier qui contient les domaines enfants.
+    // Name of the folder that holds child domains.
     subDomainsDirName: 'domains',
 
-    // En développement, affiche les détails du scan et de la génération.
+    // In development, log scan and generation details.
     debug: process.env.NODE_ENV === 'development',
 
-    // Fait échouer le build en cas de conflits ou d'erreurs de validation.
+    // Fail the build on conflicts or validation errors.
     strict: false,
 
-    // Validation facultative des noms des dossiers métier.
+    // Optional validation of domain folder names.
     naming: {
       domainNameFormat: 'kebab-case',
     },
 
-    // Réglages propres aux routes et aux auto-imports.
+    // Routes and auto-imports.
     pages: {
       childrenDirName: 'children',
       watchSourcesInDev: true,
@@ -114,7 +116,7 @@ export default defineNuxtConfig({
       },
     },
 
-    // Réglages propres aux fichiers de traduction.
+    // Translation files.
     i18n: {
       sharedI18nDirs: ['app/shared/i18n'],
       sharedMessagesNamespace: 'global',
@@ -127,63 +129,54 @@ export default defineNuxtConfig({
       watchDebounceMs: 250,
     },
   },
-  i18n: {
-    langDir: 'locales',
-    defaultLocale: 'fr',
-    locales: [
-      { code: 'fr', file: 'fr.json' },
-      { code: 'en', file: 'en.json' },
-    ],
-  },
 })
 ```
 
-### Options communes
+### Shared options
 
-| Option | Défaut | Pourquoi et quand la modifier |
+| Option | Default | Why and when to change it |
 |---|---|---|
-| `domainsDir` | `'app/domains'` | Racine commune aux domaines. Change-la si ton application range son code ailleurs; les routes et l’i18n chercheront au même endroit. |
-| `subDomainsDirName` | `'domains'` | Nom du dossier qui contient les domaines enfants. Change-le seulement si tu as choisi une autre convention d’arborescence. |
-| `strict` | `false` | Active les erreurs bloquantes sur les conflits et validations. Utilise `true` en CI pour éviter de publier un build avec des routes ou traductions ambiguës. |
-| `debug` | `false` | Affiche les détails du parcours et de la génération dans la console. Active-le pour comprendre pourquoi un domaine, une route ou un fichier i18n est ignoré. |
-| `naming.domainNameFormat` | aucune validation | Vérifie le format des noms de dossiers de domaine (`snake_case`, `camelCase`, `PascalCase`, `kebab-case` ou `preserve`). Utile pour garder une convention uniforme dans une équipe. |
+| `domainsDir` | `'app/domains'` | Root of all domains. Change it if your app keeps its code elsewhere; routes and i18n both look in the same place. |
+| `subDomainsDirName` | `'domains'` | Folder holding child domains. Change it only if you use another tree convention. |
+| `strict` | `false` | Turns conflicts and validation issues into build errors. Use `true` in CI to avoid shipping ambiguous routes or translations. |
+| `debug` | `false` | Logs scan and generation details. Enable it to understand why a domain, route or i18n file is skipped. |
+| `naming.domainNameFormat` | no validation | Checks domain folder names (`snake_case`, `camelCase`, `PascalCase`, `kebab-case` or `preserve`). Useful to keep a team convention consistent. |
 
-### `pages` : routes et auto-imports
+### `pages`: routes and auto-imports
 
-| Option | Défaut | Pourquoi et quand la modifier |
+| Option | Default | Why and when to change it |
 |---|---|---|
-| `childrenDirName` | `'children'` | Dossier utilisé pour déclarer les routes enfants imbriquées. Change-le si ton équipe utilise un autre nom de dossier. |
-| `watchSourcesInDev` | `true` | Régénère les routes quand les sources changent pendant `nuxt dev`. Désactive-le si tu veux éviter ce travail pendant le développement. |
-| `watchPagesInDev` | `true` | Prend en compte les ajouts et modifications de pages en développement. Désactive-le si les pages sont fixes pendant ta session. |
-| `watchDebounceMs` | `250` | Regroupe les changements rapprochés avant de régénérer. Augmente la valeur si un grand nombre de fichiers change en même temps. |
-| `routeDoc` | activée dans `.nuxt/domain-pages` | Produit `route.md`, `route-map.json` et `typed-router.d.ts` pour inspecter les routes et typer leur usage. Utilise `false` pour la désactiver, ou renseigne `enabled`, `outDir` et `fileName` pour la personnaliser. |
-| `noPrefixDomains` | — (déconseillée) | Ancienne liste de domaines sans préfixe. Préfère `noPrefix: true` dans le `domain.config.ts` du domaine concerné, afin que le réglage reste avec le domaine. |
-| `watchDomainConfigInDev` | — (dépréciée) | Ancienne option de surveillance des configurations. Préfère `watchSourcesInDev`, qui regroupe la surveillance des sources. |
+| `childrenDirName` | `'children'` | Folder used to declare nested child routes. |
+| `watchSourcesInDev` | `true` | Regenerates routes when sources change during `nuxt dev`. |
+| `watchPagesInDev` | `true` | Picks up added and removed pages in development. |
+| `watchDebounceMs` | `250` | Groups close changes before regenerating. Increase it when many files change at once. |
+| `routeDoc` | enabled in `.nuxt/domain-pages` | Writes `route.md`, `route-map.json` and `typed-router.d.ts` to inspect routes and type their usage. Use `false` to disable it, or set `enabled`, `outDir` and `fileName`. |
+| `watchDomainConfigInDev` | — (deprecated) | Former config-watching option. Prefer `watchSourcesInDev`. |
 
-Les options de surveillance servent uniquement en développement; elles n’affectent pas les routes de production.
+Watch options only apply in development; they never affect production routes. When a `domain.config.ts` imports another file, editing that file also reloads the config.
 
-### `i18n` : fichiers de traduction
+### `i18n`: translation files
 
-Sans `@nuxtjs/i18n` dans le projet, passe `i18n: false` pour désactiver entièrement la génération des traductions.
+Without `@nuxtjs/i18n` in the project, pass `i18n: false` to disable translation generation entirely.
 
-| Option | Défaut | Pourquoi et quand la modifier |
+| Option | Default | Why and when to change it |
 |---|---|---|
-| `sharedI18nDirs` | `['app/shared/i18n']` | Dossiers pour les traductions utilisées par plusieurs domaines (navigation, nom de l’application, messages communs). Les placer ici évite de les dupliquer dans chaque domaine. |
-| `sharedMessagesNamespace` | `'global'` | Clé parente des traductions partagées dans le JSON compilé. Garde-la si tes appels utilisent `global.*`; change-la si tu veux un autre namespace. |
-| `outputDir` | `'i18n/locales'` | Emplacement des JSON générés pour `@nuxtjs/i18n`. Il doit correspondre au `langDir` configuré pour i18n; avec `langDir: 'locales'`, la valeur par défaut convient. |
-| `domainKeyFormat` | `'snake_case'` (hérité de l’option legacy) | Formate les segments de domaine dans les clés des traductions compilées. Par exemple, un dossier `user-profile` devient la clé `user_profile`. |
-| `domainSegmentKeyFormat` | `'snake_case'` (dépréciée) | Ancien réglage du format des clés de domaine. Utilise `domainKeyFormat` pour les nouveaux projets. |
-| `keyFormat` | aucune validation | Vérifie la convention des clés dans les JSON sources. Active-le pour repérer les écarts de style avant qu’ils se multiplient. |
-| `detectDuplicates` | `true` | Signale les clés de traduction définies plusieurs fois ou les collisions de domaines. Désactive-le uniquement si ces doublons sont intentionnels. |
-| `validateInterpolation` | `false` | Compare les variables `{name}` entre les langues. Active-le pour repérer une traduction qui oublierait une variable attendue. |
-| `validateLocaleStructure` | `false` | Compare les clés entre les locales. Choisis `'missing'` pour signaler les traductions absentes, ou `'all'` pour signaler aussi les clés supplémentaires. |
-| `referenceLocale` | locale par défaut de Nuxt i18n | Choisit la langue de référence pour comparer structure et variables, par exemple `'fr'`. À définir si la langue par défaut n’est pas celle à utiliser comme référence. |
-| `watchSourcesInDev` | `true` | Regénère les fichiers de locales quand un JSON i18n change pendant `nuxt dev`. Désactive-le si tu ne modifies pas les traductions en développement. |
-| `watchDebounceMs` | `250` | Regroupe plusieurs changements de JSON avant de relancer la fusion. Augmente-le si un grand catalogue change fréquemment. |
+| `sharedI18nDirs` | `['app/shared/i18n']` | Folders for translations used by several domains (navigation, app name, common messages). |
+| `sharedMessagesNamespace` | `'global'` | Parent key of shared translations in the compiled JSON. |
+| `outputDir` | `'i18n/locales'` | Where the JSON files for `@nuxtjs/i18n` are generated. It must match the i18n `langDir`; with `langDir: 'locales'` the default works. |
+| `domainKeyFormat` | `'snake_case'` | Formats domain segments in compiled keys. For instance, a `user-profile` folder becomes the `user_profile` key. |
+| `domainSegmentKeyFormat` | `'snake_case'` (deprecated) | Former name of `domainKeyFormat`. |
+| `keyFormat` | no validation | Checks the key convention in source JSON files. |
+| `detectDuplicates` | `true` | Reports translation keys defined several times and domain collisions. |
+| `validateInterpolation` | `false` | Compares `{name}` variables across locales. |
+| `validateLocaleStructure` | `false` | Compares keys across locales: `'missing'` reports missing translations, `'all'` also reports extra keys. |
+| `referenceLocale` | Nuxt i18n default locale | Reference locale for structure and variable checks, e.g. `'en'`. |
+| `watchSourcesInDev` | `true` | Regenerates locale files when an i18n JSON changes during `nuxt dev`. |
+| `watchDebounceMs` | `250` | Groups JSON changes before merging again. |
 
-`strict` et `debug` se règlent au niveau `domain` et s’appliquent aux routes comme aux traductions. Les options `domainsDir` et `subDomainsDirName` sont également communes : les définir une seule fois évite que les deux parties du module parcourent des arborescences différentes.
+`strict` and `debug` are set at the `domain` level and apply to both routes and translations. `domainsDir` and `subDomainsDirName` are shared too, so both parts of the module always walk the same tree.
 
-## Créer un domaine avec la CLI
+## Create a domain with the CLI
 
 ```bash
 pnpm create-domain authentication
@@ -191,19 +184,19 @@ pnpm create-domain shop --i18n fr,en
 pnpm create-domain billing --only pages,composables,utils
 ```
 
-`--only` accepte `pages`, `components`, `composables`, `layouts`, `stores`, `utils` et `public`, séparés par des virgules. Sans cette option, tous ces dossiers sont créés par défaut. `domain.config.ts` est toujours présent; `--i18n fr,en` ajoute les traductions. Consultez le [guide de la CLI](https://github.com/inoss25/nuxt-domain/blob/main/docs/GUIDE.md#créer-un-domaine) pour toutes les options.
+`--only` accepts `pages`, `components`, `composables`, `layouts`, `stores`, `utils` and `public`, comma-separated. Without it, all of these folders are created. `domain.config.ts` is always created; `--i18n fr,en` adds translation files. Run `pnpm create-domain --help` for every option.
 
-## Ce que le module génère
+## What the module generates
 
-- **Routes Nuxt** depuis `pages/`, avec prise en charge des paramètres, des sous-domaines, des routes enfants et des options par domaine.
-- **Layouts Nuxt de domaine** depuis `layouts/`, et auto-imports depuis `components/`, `composables/`, `stores/` et `utils/`.
-- **Assets statiques par domaine** depuis `public/`, servis sous une URL préfixée par le chemin du domaine.
-- **Fichiers de locales** en fusionnant les JSON des domaines et des dossiers partagés.
-- **Documentation et types de routes** générés dans `.nuxt/domain-pages` par défaut.
+- **Nuxt routes** from `pages/`, with params, sub-domains, child routes and per-domain options.
+- **Domain layouts** from `layouts/`, and auto-imports from `components/`, `composables/`, `stores/` and `utils/`.
+- **Per-domain static assets** from `public/`, served under a URL prefixed by the domain path.
+- **Locale files** merged from domain and shared JSON files.
+- **Route docs and types**, generated in `.nuxt/domain-pages` by default.
 
-### Structure d’un domaine
+### Domain structure
 
-Chaque domaine regroupe la configuration et les fichiers liés à une même fonctionnalité. Voici une structure complète possible; les dossiers restent facultatifs selon les besoins du domaine :
+Each domain groups the config and files of one feature. Every folder is optional:
 
 ```text
 app/domains/account/
@@ -223,8 +216,8 @@ app/domains/account/
 ├── utils/
 │   └── validation.ts
 ├── i18n/
-│   ├── fr.json
-│   └── en.json
+│   ├── en.json
+│   └── fr.json
 ├── assets/
 │   ├── logo.svg
 │   └── account.css
@@ -237,79 +230,54 @@ app/domains/account/
             └── index.vue
 ```
 
-| Dossier / fichier | Rôle |
+| Folder / file | Role |
 |---|---|
-| `domain.config.ts` | Configure le domaine : activation, préfixe d’URL, middleware, métadonnées, sous-domaines et layout par défaut. |
-| `pages/` | Contient les pages Vue qui deviennent des routes Nuxt. Par exemple, `pages/profile.vue` devient `/account/profile`; les fichiers `[id].vue` créent des segments dynamiques. |
-| `components/` | Composants Vue propres au domaine, enregistrés pour l’auto-import Nuxt. Utilise-les pour découper l’interface en éléments réutilisables. |
-| `composables/` | Fonctions composables auto-importées, par exemple `useAccount()` pour partager la logique Vue du domaine. |
-| `layouts/` | Layouts Nuxt du domaine. Ils définissent une structure de page réutilisable, par exemple une mise en page d’authentification sans navigation principale. Voir la section ci-dessous. |
-| `stores/` | Stores auto-importés, par exemple les stores Pinia liés au domaine. |
-| `utils/` | Fonctions utilitaires auto-importées, sans dépendance à l’interface Vue. |
-| `i18n/` | Fichiers JSON de traduction du domaine, fusionnés par le module i18n avec les traductions partagées. |
-| `assets/` | Images, polices et styles propres au domaine. Importe-les depuis un fichier Vue ou CSS pour que Vite les traite et les inclue dans le build. Ce dossier n’est pas auto-importé ni créé par la CLI. |
-| `public/` | Fichiers statiques du domaine, servis directement sans import sous `/domains/<chemin-du-domaine>/`. Par exemple, `account/public/logo.svg` est disponible à `/domains/account/logo.svg`. Le module ajoute ce dossier à Nitro; la CLI le crée par défaut ou avec `--only public`. |
-| `domains/` | Sous-domaines métier imbriqués. Le domaine parent doit autoriser les sous-domaines avec `hasSubDomains: true`; chaque sous-domaine possède sa propre configuration et ses propres dossiers. |
+| `domain.config.ts` | Configures the domain: enabled flag, URL prefix, middleware, meta, sub-domains and default layout. |
+| `pages/` | Vue pages turned into Nuxt routes. `pages/profile.vue` becomes `/account/profile`; `[id].vue` files create dynamic segments. |
+| `components/` | Domain components, registered for Nuxt auto-import. |
+| `composables/` | Auto-imported composables, e.g. `useAccount()`. |
+| `layouts/` | Domain layouts (see below). |
+| `stores/` | Auto-imported stores, e.g. Pinia stores. |
+| `utils/` | Auto-imported helpers with no Vue dependency. |
+| `i18n/` | Domain translation JSON files, merged with shared translations. |
+| `assets/` | Images, fonts and styles imported from Vue or CSS files so Vite processes them. Not auto-imported nor created by the CLI. |
+| `public/` | Static files served as-is under `/domains/<domain-path>/`. For instance `account/public/logo.svg` is available at `/domains/account/logo.svg`. |
+| `domains/` | Nested sub-domains. The parent must allow them with `hasSubDomains: true`. |
 
-La CLI crée `domain.config.ts` et, par défaut, les dossiers `pages/`, `components/`, `composables/`, `layouts/`, `stores/`, `utils/` et `public/`. `i18n/` est ajouté avec `--i18n`; `assets/` et `domains/` se créent lorsque le projet en a besoin. Utilise `--only` pour choisir les dossiers nécessaires, y compris `public`.
+You can add your own folders, such as `services/` or `repositories/`. They stay in the domain, but the module neither scans nor auto-imports them.
 
-Tu peux aussi ajouter des dossiers propres à ton application, comme `services/` ou `repositories/`. Ils restent dans le domaine, mais le module ne les parcourt pas et ne les auto-importe pas automatiquement.
+### Domain layouts
 
-### Layouts de domaine
+`.vue` files in `layouts/` are registered as real Nuxt layouts with `addLayout`. Their name is prefixed by the domain to avoid collisions: `app/domains/account/layouts/default.vue` becomes `account-default`, and `layouts/auth.vue` becomes `account-auth`.
 
-Les fichiers `.vue` de `layouts/` sont enregistrés comme de vrais layouts Nuxt via `addLayout`. Un layout contient `<slot />` à l’endroit où Nuxt affiche la page. Leur nom est préfixé par le domaine pour éviter les collisions : `app/domains/account/layouts/default.vue` devient `account-default`, et `layouts/auth.vue` devient `account-auth`.
+In `domain.config.ts`, `layout: 'default'` applies `account-default` to the domain pages. The value is the file path inside `layouts/` without extension: `layout: 'auth/login'` selects `layouts/auth/login.vue`. Sub-domains inherit the setting and may override it. A page can pick another layout with `definePageMeta({ layout: 'account-auth' })` or disable it with `definePageMeta({ layout: false })`.
 
-Dans `domain.config.ts`, `layout: 'default'` applique `account-default` par défaut aux pages du domaine. La valeur désigne le chemin du fichier dans `layouts/`, sans extension : par exemple `layout: 'auth'` sélectionne `layouts/auth.vue`, et `layout: 'auth/login'` sélectionne `layouts/auth/login.vue`. Les sous-domaines héritent du réglage, qu’ils peuvent remplacer dans leur propre configuration. Une page peut choisir un autre layout enregistré avec `definePageMeta({ layout: 'account-auth' })` ou désactiver le layout avec `definePageMeta({ layout: false })`.
-
-Comme dans Nuxt standard, `app.vue` doit contenir `<NuxtLayout><NuxtPage /></NuxtLayout>`. Sans option `layout` dans la configuration du domaine, Nuxt garde son fonctionnement habituel et utilise le layout global `default` s’il existe. Un layout de domaine n’est pas appliqué automatiquement en l’absence de `layout` dans `domain.config.ts`.
-
-### Assets propres au domaine
-
-Les assets sont importés depuis les fichiers qui les utilisent. Depuis `pages/profile.vue`, par exemple :
-
-```vue
-<script setup lang="ts">
-import accountLogo from '../assets/logo.svg'
-</script>
-
-<template>
-  <img :src="accountLogo" alt="Compte" />
-</template>
-```
-
-Vite résout et prépare cet asset pour le build. Pour un fichier qui doit garder une URL statique connue sans import, place-le dans `public/` du domaine : `app/domains/account/public/logo.svg` est servi à `/domains/account/logo.svg`. Le `public/` global de l’application reste aussi disponible à la racine, par exemple `public/favicon.ico` à `/favicon.ico`.
+As in standard Nuxt, `app.vue` must contain `<NuxtLayout><NuxtPage /></NuxtLayout>`. Without a `layout` option, Nuxt keeps its usual behavior and uses the global `default` layout if it exists.
 
 ## Documentation
 
-- [Guide complet : installation, configuration et conventions](https://github.com/inoss25/nuxt-domain/blob/main/docs/GUIDE.md)
-- [Routes et génération des pages](https://github.com/inoss25/nuxt-domain/blob/main/pages/README.md)
-- [Agrégation des traductions](https://github.com/inoss25/nuxt-domain/blob/main/i18n/README.md)
-- [Historique des versions](https://github.com/inoss25/nuxt-domain/blob/main/CHANGELOG.md)
-- [Signaler un problème](https://github.com/inoss25/nuxt-domain/issues)
+The detailed guides are written in French:
 
-## Développement du module
+- [Full guide: installation, configuration and conventions](https://github.com/inoss25/nuxt-domain/blob/main/docs/GUIDE.md)
+- [Routes and page generation](https://github.com/inoss25/nuxt-domain/blob/main/docs/pages.md)
+- [Translation merging](https://github.com/inoss25/nuxt-domain/blob/main/docs/i18n.md)
+- [Changelog](https://github.com/inoss25/nuxt-domain/blob/main/CHANGELOG.md)
+- [Report an issue](https://github.com/inoss25/nuxt-domain/issues)
 
-Depuis le dépôt :
+## Development
 
 ```bash
 pnpm install
-pnpm test
+pnpm test        # unit tests
+pnpm typecheck   # TypeScript check of the module
+pnpm build       # builds dist/ with @nuxt/module-builder
+pnpm dev         # Nuxt playground wired to src/
 ```
 
-Pour mesurer les étapes principales de génération, lance `pnpm benchmark`. Le benchmark crée un projet fictif dans un dossier temporaire, mesure le chargement des configurations avec cache froid et chaud, le scan des dossiers, la génération des routes et la fusion des locales, puis supprime le projet temporaire. Il affiche la médiane, le minimum et le 95e percentile en millisecondes, après un passage d’échauffement.
+Sources live in `src/`: `module.ts` (entry point), `pages-module.ts`, `i18n-module.ts` and `runtime/` (code exposed through the `#domain-pages` and `#domain-shared` aliases). Tests live in `test/`.
 
-La charge par défaut contient 50 domaines, 500 pages et 100 fichiers i18n. Pour ajuster le scénario sous PowerShell :
+`pnpm benchmark` measures the main generation steps (config loading with cold and warm cache, folder scan, route generation and locale merging) on a temporary project of 50 domains, 500 pages and 100 i18n files. Tune it with `DOMAIN_BENCH_DOMAINS`, `DOMAIN_BENCH_PAGES`, `DOMAIN_BENCH_LOCALES` and `DOMAIN_BENCH_ITERATIONS`.
 
-```powershell
-$env:DOMAIN_BENCH_DOMAINS=100
-$env:DOMAIN_BENCH_PAGES=20
-$env:DOMAIN_BENCH_LOCALES=3
-$env:DOMAIN_BENCH_ITERATIONS=10
-pnpm benchmark
-```
-
-Les résultats dépendent de la machine et du système de fichiers. Compare les mêmes paramètres et le même environnement avant/après une modification; la durée de la suite de tests ne remplace pas une mesure du démarrage d’une application Nuxt réelle.
-
-## Licence
+## License
 
 [MIT](https://github.com/inoss25/nuxt-domain/blob/main/LICENSE)

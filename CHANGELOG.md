@@ -1,5 +1,16 @@
 # Changelog
 
+## Non publié
+
+- **Rupture** : supprime l’option `pages.noPrefixDomains`, dépréciée ; utilisez `noPrefix: true` dans le `domain.config.ts` du domaine.
+- Publie un build (`dist/`, JavaScript + déclarations `.d.ts`) généré avec `@nuxt/module-builder` au lieu des sources TypeScript ; les alias `#domain-pages` et `#domain-shared` pointent vers `dist/runtime`.
+- Déclare `meta.compatibility` (`nuxt >=3.12.0`) : Nuxt avertit en cas de version incompatible.
+- Recharge un `domain.config.ts` quand un fichier qu’il importe change (cache et watcher dev).
+- Ajoute les assets `public/` des domaines via le hook `nitro:config` au lieu de modifier `nuxt.options.nitro`.
+- Journalise via consola (le logger de Nuxt, tag `nuxt-domain`) au lieu de `console.*` ; messages, diagnostics et `route.md` en anglais.
+- README principal en anglais, version française dans `README.fr.md` ; documentation des sous-modules déplacée dans `docs/`.
+- Corrige les erreurs TypeScript du module i18n ; ajoute `pnpm typecheck` et une CI GitHub Actions (Linux + Windows, plus un job Nuxt 3 minimal).
+
 ## 0.4.0 — 2026-10-27
 
 - Parcourt l’arborescence des domaines une seule fois par instance Nuxt (au lieu de 7 globs) et partage l’index entre la validation, les routes, les auto-imports et l’i18n : démarrage environ 5× plus rapide sur 200 domaines / 4 000 pages.

@@ -12,8 +12,8 @@ const iterations = positiveInteger(process.env.DOMAIN_BENCH_ITERATIONS, 7)
 const fixtureRoot = mkdtempSync(resolve(tmpdir(), 'nuxt-domain-bench-'))
 const domainsRoot = resolve(fixtureRoot, 'app/domains')
 const outputDir = resolve(fixtureRoot, '.nuxt/domain-i18n')
-const sharedRuntimeDir = resolve(rootDir, 'shared/runtime')
-const pagesRuntimeDir = resolve(rootDir, 'pages/runtime')
+const sharedRuntimeDir = resolve(rootDir, 'src/runtime/shared')
+const pagesRuntimeDir = resolve(rootDir, 'src/runtime/pages')
 const debugLog = () => {}
 const pagesOptions = { subDomainsDirName: 'domains' }
 const i18nOptions = {
@@ -91,12 +91,12 @@ try {
         { generateLocales },
         { validateDomainFolderNames },
     ] = await Promise.all([
-        vite.ssrLoadModule('/shared/runtime/config-loader.ts'),
-        vite.ssrLoadModule('/shared/runtime/scan.ts'),
-        vite.ssrLoadModule('/pages/runtime/config-loader.ts'),
-        vite.ssrLoadModule('/pages/runtime/route-generator.ts'),
-        vite.ssrLoadModule('/i18n/runtime/generate-locales.ts'),
-        vite.ssrLoadModule('/shared/runtime/validate-domain-names.ts'),
+        vite.ssrLoadModule('/src/runtime/shared/config-loader.ts'),
+        vite.ssrLoadModule('/src/runtime/shared/scan.ts'),
+        vite.ssrLoadModule('/src/runtime/pages/config-loader.ts'),
+        vite.ssrLoadModule('/src/runtime/pages/route-generator.ts'),
+        vite.ssrLoadModule('/src/runtime/i18n/generate-locales.ts'),
+        vite.ssrLoadModule('/src/runtime/shared/validate-domain-names.ts'),
     ])
 
     const warmConfigCache = createDomainConfigCache()
