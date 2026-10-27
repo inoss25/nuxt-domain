@@ -1,4 +1,3 @@
-import fg from 'fast-glob'
 import { resolve } from 'node:path'
 import type { DomainDiagnostic } from './diagnostics'
 import {
@@ -8,12 +7,14 @@ import {
     type NameFormat,
 } from './naming'
 import { isIgnoredDomainPath, toPosixPath } from './paths'
+import { getDomainTreeScan, type DomainScanCache } from './scan'
 
 export interface ValidateDomainNamesParams {
     domainsRoot: string
     domainNameFormat?: NameFormat
     domainKeyFormat: NameFormat
     detectDuplicates: boolean
+    scanCache?: DomainScanCache
 }
 
 /**
@@ -28,16 +29,14 @@ export async function validateDomainFolderNames(
         domainNameFormat,
         domainKeyFormat,
         detectDuplicates,
+        scanCache,
     } = params
 
     const reports: DomainDiagnostic[] = []
 
     if (!domainNameFormat && !detectDuplicates) return reports
 
-    const configFiles = await fg('**/domain.config.ts', {
-        cwd: domainsRoot,
-        ignore: ['**/_*/**'],
-    })
+    const { configFiles } = await getDomainTreeScan(domainsRoot, scanCache)
 
     /** chemin de clé i18n (segments formatés) → chemins disque distincts */
     const i18nPathOwners = new Map<
@@ -45,7 +44,7 @@ export async function validateDomainFolderNames(
         Array<{ domainPath: string; configFile: string }>
     >()
 
-    for (const file of configFiles.sort()) {
+    for (const file of configFiles) {
         const posix = toPosixPath(file)
         const parts = posix.split('/').filter(Boolean)
         if (parts.length < 2) continue

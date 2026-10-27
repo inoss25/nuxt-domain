@@ -347,17 +347,17 @@ Fichier JSON exploitable programmatiquement pour générer des navigations, side
 
 ### `typed-router.d.ts` — Noms de routes typés
 
-Fichier de déclaration TypeScript générant un type union `DomainPagesRouteName` pour les noms de routes. Améliore l'autocomplétion et la vérification TypeScript lors de la navigation :
+Fichier de déclaration TypeScript exposant un type global `DomainPagesRouteName` (union des noms de routes des domaines) :
 
 ```typescript
-import { useRouter } from 'vue-router'
-
-const router = useRouter()
-// ✅ Nom de route typé et vérifié à la compilation
-router.push({ name: 'dashboard' })
+// ✅ Nom de route vérifié à la compilation
+const target: DomainPagesRouteName = 'dashboard'
+navigateTo({ name: target })
 // ❌ Erreur TypeScript si le nom n'existe pas
-router.push({ name: 'route-inexistante' })
+const invalid: DomainPagesRouteName = 'route-inexistante'
 ```
+
+Pour typer directement `router.push` / `<NuxtLink>`, utilisez le typage natif de Nuxt (`experimental.typedPages` dans `nuxt.config`).
 
 ## 🎨 Auto-import
 

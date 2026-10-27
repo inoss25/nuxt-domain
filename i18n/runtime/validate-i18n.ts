@@ -23,9 +23,9 @@ export function validateJsonKeyFormat(
     obj: Record<string, unknown>,
     keyFormat: NameFormat,
     file: string,
-    keyPrefix = ''
+    keyPrefix = '',
+    reports: DomainDiagnostic[] = []
 ): DomainDiagnostic[] {
-    const reports: DomainDiagnostic[] = []
     for (const [key, value] of Object.entries(obj)) {
         const path = keyPrefix ? `${keyPrefix}.${key}` : key
         if (!conformsToNameFormat(key, keyFormat)) {
@@ -39,9 +39,7 @@ export function validateJsonKeyFormat(
             })
         }
         if (isPlainObject(value)) {
-            reports.push(
-                ...validateJsonKeyFormat(value, keyFormat, file, path)
-            )
+            validateJsonKeyFormat(value, keyFormat, file, path, reports)
         }
     }
     return reports
@@ -65,10 +63,32 @@ export function collectLeafPaths(
 
 export type LocaleStructureMode = false | 'missing' | 'all'
 
+/** Feuilles de chaque locale, à calculer une fois et partager entre validations. */
+export type LeavesByLocale = Map<string, Map<string, unknown>>
+
+export function collectLeavesByLocale(
+    byLocale: Map<string, Record<string, unknown>>
+): LeavesByLocale {
+    const out: LeavesByLocale = new Map()
+    for (const [code, data] of byLocale) out.set(code, collectLeafPaths(data))
+    return out
+}
+
+function leavesOf(
+    byLocale: Map<string, Record<string, unknown>>,
+    leavesByLocale: LeavesByLocale | undefined,
+    code: string
+): Map<string, unknown> {
+    return (
+        leavesByLocale?.get(code) ?? collectLeafPaths(byLocale.get(code) ?? {})
+    )
+}
+
 export function validateLocaleStructures(
     byLocale: Map<string, Record<string, unknown>>,
     mode: LocaleStructureMode,
-    referenceLocale?: string
+    referenceLocale?: string,
+    leavesByLocale?: LeavesByLocale
 ): DomainDiagnostic[] {
     if (!mode) return []
     const reports: DomainDiagnostic[] = []
@@ -79,11 +99,11 @@ export function validateLocaleStructures(
         referenceLocale && byLocale.has(referenceLocale)
             ? referenceLocale
             : codes[0]!
-    const refLeaves = collectLeafPaths(byLocale.get(ref) ?? {})
+    const refLeaves = leavesOf(byLocale, leavesByLocale, ref)
 
     for (const code of codes) {
         if (code === ref) continue
-        const leaves = collectLeafPaths(byLocale.get(code) ?? {})
+        const leaves = leavesOf(byLocale, leavesByLocale, code)
 
         for (const key of refLeaves.keys()) {
             if (!leaves.has(key)) {
@@ -115,7 +135,8 @@ export function validateLocaleStructures(
 
 export function validateInterpolationAcrossLocales(
     byLocale: Map<string, Record<string, unknown>>,
-    referenceLocale?: string
+    referenceLocale?: string,
+    leavesByLocale?: LeavesByLocale
 ): DomainDiagnostic[] {
     const reports: DomainDiagnostic[] = []
     const codes = [...byLocale.keys()].sort()
@@ -125,20 +146,21 @@ export function validateInterpolationAcrossLocales(
         referenceLocale && byLocale.has(referenceLocale)
             ? referenceLocale
             : codes[0]!
-    const refLeaves = collectLeafPaths(byLocale.get(ref) ?? {})
+    const refLeaves = leavesOf(byLocale, leavesByLocale, ref)
+    // Calculées une fois par locale (et non une fois par clé de référence).
+    const otherLocales = codes
+        .filter((code) => code !== ref)
+        .map((code) => ({ code, leaves: leavesOf(byLocale, leavesByLocale, code) }))
 
-    for (const key of refLeaves.keys()) {
-        const refVal = refLeaves.get(key)
+    for (const [key, refVal] of refLeaves) {
         if (typeof refVal !== 'string') continue
         const refVars = extractInterpolationVariables(refVal)
+        const refSet = refVars.join(',')
 
-        for (const code of codes) {
-            if (code === ref) continue
-            const leaves = collectLeafPaths(byLocale.get(code) ?? {})
+        for (const { code, leaves } of otherLocales) {
             const val = leaves.get(key)
             if (typeof val !== 'string') continue
             const vars = extractInterpolationVariables(val)
-            const refSet = refVars.join(',')
             const set = vars.join(',')
             if (refSet !== set) {
                 reports.push({

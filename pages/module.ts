@@ -5,14 +5,26 @@ import {
     addLayout,
     addImportsDir,
 } from 'nuxt/kit'
-import fg from 'fast-glob'
-import { resolve, relative, isAbsolute, dirname, basename } from 'node:path'
+import { resolve, relative, dirname, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { DomainPagesOptions, DomainRouteDocOptions } from './runtime/types'
 import { loadDomainConfigs } from './runtime/config-loader'
 import { getDomainConfigCache } from '../shared/runtime/config-loader'
+import { toPosixPath } from '../shared/runtime/paths'
+import {
+    getDomainScanCache,
+    getDomainTreeScan,
+    requiresRestart,
+    resolveWatchPath,
+    watchDomainTree,
+    type DomainTreeScan,
+} from '../shared/runtime/scan'
 import { generateDomainRoutes } from './runtime/route-generator'
-import { normalizeDomainParts, isIgnoredDomainPath } from './runtime/utils'
+import {
+    normalizeDomainParts,
+    isIgnoredDomainPath,
+    toNuxtLayoutName,
+} from './runtime/utils'
 import { getDomainPublicAssets } from './runtime/public-assets'
 import { writeRouteDoc } from './runtime/route-doc'
 import {
@@ -20,10 +32,6 @@ import {
     isDomainPageRelativePath,
     refreshDomainPages,
 } from './runtime/dev-watch'
-
-const toPosixPath = (p: string) => p.replace(/\\/g, '/')
-
-const AUTO_IMPORT_IGNORE = ['**/pages/**', '**/_*/**'] as const
 
 function resolveRouteDoc(options: DomainPagesOptions): {
     enabled: boolean
@@ -56,36 +64,15 @@ function isWatchEnabled(options: DomainPagesOptions, nuxtDev: boolean): boolean 
     return true
 }
 
-async function registerDomainAutoImports(
+function registerDomainAutoImports(
     domainsRoot: string,
-    addComponent: typeof addComponentsDir,
-    addImport: typeof addImportsDir,
+    scan: DomainTreeScan,
     domainConfigs: Awaited<ReturnType<typeof loadDomainConfigs>>,
     options: DomainPagesOptions,
     debugLog: (...args: unknown[]) => void
-): Promise<string[]> {
-    // Les dossiers et fichiers sont parcourus séparément pour conserver
-    // l'auto-import des dossiers et enregistrer les layouts Vue.
-    const [foundDirs, foundLayouts] = await Promise.all([
-        fg(
-            [
-                '**/components',
-                '**/composables',
-                '**/public',
-                '**/stores',
-                '**/utils',
-            ],
-            {
-                cwd: domainsRoot,
-                onlyDirectories: true,
-                ignore: [...AUTO_IMPORT_IGNORE],
-            }
-        ),
-        fg('**/layouts/**/*.vue', {
-            cwd: domainsRoot,
-            ignore: [...AUTO_IMPORT_IGNORE],
-        }),
-    ])
+): string[] {
+    const foundDirs = scan.autoImportDirs
+    const foundLayouts = scan.layoutFiles
 
     const byKind: Record<string, string[]> = {
         components: [],
@@ -102,7 +89,7 @@ async function registerDomainAutoImports(
     const utilDirs = byKind.utils!
 
     for (const dir of componentDirs) {
-        addComponent({
+        addComponentsDir({
             path: resolve(domainsRoot, dir),
             pathPrefix: false,
         })
@@ -112,27 +99,20 @@ async function registerDomainAutoImports(
             dirname(file).split(/[\\/]layouts(?:[\\/]|$)/)[0] ?? ''
         const rawDomainParts = domainPath.split(/[\\/]/).filter(Boolean)
         if (isIgnoredDomainPath(rawDomainParts)) continue
-        const domainName = normalizeDomainParts(
+        const domainId = normalizeDomainParts(
             domainConfigs,
             options,
             rawDomainParts,
             debugLog
-        ).join('-')
+        ).join('/')
         const layoutPath = file.split(/[\\/]layouts[\\/]/).at(-1) ?? ''
-        const layoutName = layoutPath
-            .replace(/\.vue$/i, '')
-            .split(/[\\/]/)
-            .filter(Boolean)
-            .join('-')
-        const name = `${domainName}-${layoutName}`
-            .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
-            .replace(/[^a-zA-Z0-9-]/g, '-')
-            .replace(/-+/g, '-')
-            .toLowerCase()
-        addLayout(resolve(domainsRoot, file), name)
+        addLayout(
+            resolve(domainsRoot, file),
+            toNuxtLayoutName(domainId, layoutPath)
+        )
     }
     for (const dir of [...composableDirs, ...storeDirs, ...utilDirs]) {
-        addImport(resolve(domainsRoot, dir))
+        addImportsDir(resolve(domainsRoot, dir))
     }
     return byKind.public!
 }
@@ -196,6 +176,10 @@ export default defineNuxtModule<DomainPagesOptions>({
         // Cache partagé avec le module i18n : les domain.config.ts ne sont
         // chargés qu'une fois tant qu'ils ne changent pas.
         const configCache = getDomainConfigCache(nuxt)
+        // Index de l'arborescence partagé avec les autres modules ; enregistré
+        // avant notre propre hook `builder:watch` pour être à jour quand il s'exécute.
+        const scanCache = getDomainScanCache(nuxt, domainsRoot)
+        watchDomainTree(nuxt, domainsRoot, scanCache)
 
         let domainConfigs = await loadDomainConfigs(
             domainsRoot,
@@ -203,13 +187,13 @@ export default defineNuxtModule<DomainPagesOptions>({
             sharedRuntimeDir,
             pagesRuntimeDir,
             debugLog,
-            configCache
+            configCache,
+            scanCache
         )
 
-        const domainPublicDirs = await registerDomainAutoImports(
+        const domainPublicDirs = registerDomainAutoImports(
             domainsRoot,
-            addComponentsDir,
-            addImportsDir,
+            await getDomainTreeScan(domainsRoot, scanCache),
             domainConfigs,
             options,
             debugLog
@@ -233,11 +217,12 @@ export default defineNuxtModule<DomainPagesOptions>({
         )
 
         extendPages(async (pages) => {
-            const { routeMap, allRouteNames } = await generateDomainRoutes(
+            const { routeMap, allRouteNames, entries } = await generateDomainRoutes(
                 domainsRoot,
                 domainConfigs,
                 options,
-                debugLog
+                debugLog,
+                scanCache
             )
 
             for (const route of routeMap.values()) {
@@ -256,6 +241,7 @@ export default defineNuxtModule<DomainPagesOptions>({
                 routeDoc: routeDocResolved,
                 routeMap,
                 allRouteNames,
+                entries,
                 debugLog,
             })
         })
@@ -284,6 +270,7 @@ export default defineNuxtModule<DomainPagesOptions>({
                                 options,
                                 routeDoc: routeDocResolved,
                                 debugLog,
+                                scanCache,
                             })
                         })
                         .catch((err) => {
@@ -296,10 +283,21 @@ export default defineNuxtModule<DomainPagesOptions>({
             }
 
             nuxt.hook('builder:watch', async (event, rawPath) => {
-                const absPath = isAbsolute(rawPath)
-                    ? rawPath
-                    : resolve(nuxt.options.srcDir, rawPath)
+                const absPath = resolveWatchPath(nuxt.options.srcDir, rawPath)
                 if (!fileIsUnderRoot(absPath, domainsRoot)) return
+
+                // Auto-imports, layouts et `public/` ne sont enregistrés qu'au setup.
+                if (
+                    !scanCache.restartRequested &&
+                    requiresRestart(domainsRoot, event, absPath)
+                ) {
+                    scanCache.restartRequested = true
+                    console.info(
+                        `🔁 [domain-pages] nouvelle source (${basename(absPath)}) — redémarrage de Nuxt`
+                    )
+                    await nuxt.callHook('restart')
+                    return
+                }
 
                 const rel = toPosixPath(relative(domainsRoot, absPath))
 
@@ -310,7 +308,8 @@ export default defineNuxtModule<DomainPagesOptions>({
                         sharedRuntimeDir,
                         pagesRuntimeDir,
                         debugLog,
-                        configCache
+                        configCache,
+                        scanCache
                     )
                     enqueueRefresh('domain.config', absPath)
                     return

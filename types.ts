@@ -20,7 +20,8 @@ export interface DomainModuleOptions {
     /** Conventions de nommage des dossiers domaine (indépendant des clés i18n). */
     naming?: DomainNamingOptions
     pages?: Partial<Omit<DomainPagesOptions, 'domainsDir' | 'subDomainsDirName' | 'strict' | 'debug'>>
-    i18n?: Partial<Omit<DomainI18nOptions, 'domainsDir' | 'subDomainsDirName' | 'strict' | 'debug'>>
+    /** `false` désactive le module i18n (projet sans `@nuxtjs/i18n`). */
+    i18n?: false | Partial<Omit<DomainI18nOptions, 'domainsDir' | 'subDomainsDirName' | 'strict' | 'debug'>>
 }
 
 export type { DomainNamingOptions as DomainNamingConfig }

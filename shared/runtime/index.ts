@@ -5,6 +5,14 @@ export {
   getDomainConfigCache,
   invalidateDomainConfigCache,
 } from './config-loader'
+export {
+  createDomainScanCache,
+  getDomainScanCache,
+  getDomainTreeScan,
+  invalidateDomainScanCache,
+  applyDomainWatchEvent,
+  watchDomainTree,
+} from './scan'
 export { isDomainEnabled } from './domain-enabled'
 export {
   toPosixPath,
@@ -24,3 +32,4 @@ export type {
   LoadDomainConfigsResult,
   LoadDomainConfigsParams,
 } from './config-loader'
+export type { DomainScanCache, DomainTreeScan } from './scan'

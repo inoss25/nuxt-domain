@@ -1,4 +1,3 @@
-import fg from 'fast-glob'
 import { createViteServer } from 'vitest/node'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -84,11 +83,20 @@ try {
         server: { middlewareMode: true },
         appType: 'custom',
     })
-    const [{ createDomainConfigCache }, { loadDomainConfigs }, { generateDomainRoutes }, { generateLocales }] = await Promise.all([
+    const [
+        { createDomainConfigCache },
+        { createDomainScanCache, getDomainTreeScan },
+        { loadDomainConfigs },
+        { generateDomainRoutes },
+        { generateLocales },
+        { validateDomainFolderNames },
+    ] = await Promise.all([
         vite.ssrLoadModule('/shared/runtime/config-loader.ts'),
+        vite.ssrLoadModule('/shared/runtime/scan.ts'),
         vite.ssrLoadModule('/pages/runtime/config-loader.ts'),
         vite.ssrLoadModule('/pages/runtime/route-generator.ts'),
         vite.ssrLoadModule('/i18n/runtime/generate-locales.ts'),
+        vite.ssrLoadModule('/shared/runtime/validate-domain-names.ts'),
     ])
 
     const warmConfigCache = createDomainConfigCache()
@@ -116,19 +124,21 @@ try {
     await measure('Chargement des configs (cache chaud)', () =>
         loadDomainConfigs(domainsRoot, pagesOptions, sharedRuntimeDir, pagesRuntimeDir, debugLog, warmConfigCache)
     )
-    await measure('Scan auto-imports, layouts et public', async () => {
-        await Promise.all([
-            fg(['**/components', '**/composables', '**/public', '**/stores', '**/utils'], {
-                cwd: domainsRoot,
-                onlyDirectories: true,
-            }),
-            fg('**/layouts/**/*.vue', { cwd: domainsRoot }),
-        ])
-    })
+    await measure('Scan de l’arborescence (sans cache)', () => getDomainTreeScan(domainsRoot))
     await measure(`Génération de ${totalPages} routes`, () =>
         generateDomainRoutes(domainsRoot, configs, pagesOptions, debugLog)
     )
     await measure(`Génération i18n (${totalLocaleFiles} fichiers)`, () => generateLocales(localeParams))
+    // Séquence du setup Nuxt : une instance = des caches neufs, partagés entre modules.
+    await measure('Démarrage complet (caches partagés)', async () => {
+        const configCache = createDomainConfigCache()
+        const scanCache = createDomainScanCache()
+        await validateDomainFolderNames({ domainsRoot, domainKeyFormat: 'snake_case', detectDuplicates: true, scanCache })
+        const startupConfigs = await loadDomainConfigs(domainsRoot, pagesOptions, sharedRuntimeDir, pagesRuntimeDir, debugLog, configCache, scanCache)
+        await getDomainTreeScan(domainsRoot, scanCache)
+        await generateDomainRoutes(domainsRoot, startupConfigs, pagesOptions, debugLog, scanCache)
+        await generateLocales({ ...localeParams, configCache, scanCache })
+    })
 } finally {
     await vite?.close()
     rmSync(fixtureRoot, { recursive: true, force: true })

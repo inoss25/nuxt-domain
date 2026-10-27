@@ -1,6 +1,6 @@
 import fg from 'fast-glob'
 import { resolve, relative } from 'node:path'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import {
     loadDomainConfigs,
@@ -9,10 +9,16 @@ import {
 import type { DomainDiagnostic } from '../../shared/runtime/diagnostics'
 import { reportDiagnostics } from '../../shared/runtime/diagnostics'
 import { isDomainEnabled } from '../../shared/runtime/domain-enabled'
+import { writeIfChanged } from '../../shared/runtime/fs'
 import {
     normalizeDomainParts,
     toPosixPath,
 } from '../../shared/runtime/paths'
+import {
+    createDomainScanCache,
+    getDomainTreeScan,
+    type DomainScanCache,
+} from '../../shared/runtime/scan'
 import type { DomainConfigPathFields } from '../../shared/runtime/types'
 import {
     formatDomainSegmentForI18nKey,
@@ -27,6 +33,7 @@ import {
     generateTypedI18nDts,
 } from './typed-i18n'
 import {
+    collectLeavesByLocale,
     detectMergeTypeConflict,
     validateInterpolationAcrossLocales,
     validateJsonKeyFormat,
@@ -106,15 +113,6 @@ function resolveReferenceLocale(
     return typeof d === 'string' ? d : undefined
 }
 
-function writeIfChanged(outPath: string, content: string): boolean {
-    if (existsSync(outPath)) {
-        const prev = readFileSync(outPath, 'utf8')
-        if (prev === content) return false
-    }
-    writeFileSync(outPath, content, 'utf8')
-    return true
-}
-
 export interface GenerateLocalesParams {
     rootDir: string
     domainsRoot: string
@@ -128,6 +126,8 @@ export interface GenerateLocalesParams {
     debugLog: (...args: unknown[]) => void
     /** Cache partagé des `domain.config.ts` (voir `getDomainConfigCache`). */
     configCache?: DomainConfigCache
+    /** Index partagé de l'arborescence (voir `getDomainScanCache`). */
+    scanCache?: DomainScanCache
 }
 
 export async function generateLocales(params: GenerateLocalesParams) {
@@ -142,6 +142,8 @@ export async function generateLocales(params: GenerateLocalesParams) {
         debugLog,
         configCache,
     } = params
+    // Sans cache fourni, un cache local évite de scanner deux fois (configs + JSON).
+    const scanCache = params.scanCache ?? createDomainScanCache()
 
     const validation = resolveI18nValidation(options)
     const strict = validation.strict
@@ -167,12 +169,12 @@ export async function generateLocales(params: GenerateLocalesParams) {
     ) => {
         if (!validation.detectDuplicates) return
         const tracker = getTracker(localeCode)
-        const walk = (obj: Record<string, unknown>, parts: string[]) => {
+        const walk = (obj: Record<string, unknown>, prefix: string) => {
             for (const [k, v] of Object.entries(obj)) {
-                const next = [...parts, k]
+                const next = prefix ? `${prefix}.${k}` : k
                 if (isPlainObject(v)) walk(v, next)
                 else {
-                    const conflict = tracker.track(next.join('.'), source)
+                    const conflict = tracker.track(next, source)
                     if (conflict) {
                         diagnostics.push({
                             ...conflict,
@@ -183,7 +185,7 @@ export async function generateLocales(params: GenerateLocalesParams) {
                 }
             }
         }
-        walk(parsed, prefixSegments)
+        walk(parsed, prefixSegments.join('.'))
     }
 
     const ingestJson = (
@@ -216,6 +218,7 @@ export async function generateLocales(params: GenerateLocalesParams) {
               moduleLabel: 'domain-i18n',
               debugLog,
               cache: configCache,
+              scanCache,
           })
         : { configs: new Map<string, DomainConfigPathFields>() }
 
@@ -279,13 +282,7 @@ export async function generateLocales(params: GenerateLocalesParams) {
     }
 
     if (existsSync(domainsRoot)) {
-        const domainJsonFiles = await fg('**/i18n/**/*.json', {
-            cwd: domainsRoot,
-            onlyFiles: true,
-            ignore: ['**/_*/**'],
-        })
-
-        const sortedDomainFiles = domainJsonFiles.sort()
+        const sortedDomainFiles = (await getDomainTreeScan(domainsRoot, scanCache)).i18nFiles
         const domainTexts = await readTexts(
             sortedDomainFiles.map((f) => resolve(domainsRoot, f))
         )
@@ -352,18 +349,25 @@ export async function generateLocales(params: GenerateLocalesParams) {
     }
 
     const refLocale = resolveReferenceLocale(nuxt, validation.referenceLocale)
+    // Feuilles calculées une seule fois, partagées par les validations et le typage.
+    const leavesByLocale = collectLeavesByLocale(byLocale)
 
     diagnostics.push(
         ...validateLocaleStructures(
             byLocale,
             validation.validateLocaleStructure,
-            refLocale
+            refLocale,
+            leavesByLocale
         )
     )
 
     if (validation.validateInterpolation) {
         diagnostics.push(
-            ...validateInterpolationAcrossLocales(byLocale, refLocale)
+            ...validateInterpolationAcrossLocales(
+                byLocale,
+                refLocale,
+                leavesByLocale
+            )
         )
     }
 
@@ -378,13 +382,17 @@ export async function generateLocales(params: GenerateLocalesParams) {
 
     mkdirSync(outputDir, { recursive: true })
 
-    const allKeys: string[] = []
+    const allKeys = new Set<string>()
+    let keyCount = 0
+    const sortedLocales = [...allLocales].sort()
 
-    for (const code of [...allLocales].sort()) {
+    for (const code of sortedLocales) {
         const data = byLocale.get(code) ?? {}
-        // Boucle plutôt que push(...spread) : le spread dépasse la pile d'appels
-        // au-delà de ~100k clés.
-        for (const key of collectI18nLeafKeys(data)) allKeys.push(key)
+        const leaves = leavesByLocale.get(code)
+        for (const key of leaves ? leaves.keys() : collectI18nLeafKeys(data)) {
+            allKeys.add(key)
+            keyCount++
+        }
         const content = `${JSON.stringify(data, null, 2)}\n`
         const outPath = resolve(outputDir, `${code}.json`)
         if (writeIfChanged(outPath, content)) {
@@ -394,8 +402,10 @@ export async function generateLocales(params: GenerateLocalesParams) {
         }
     }
 
-    const typedContent = generateTypedI18nDts(allKeys)
+    const schemaLocale =
+        refLocale && allLocales.has(refLocale) ? refLocale : sortedLocales[0]
+    const typedContent = generateTypedI18nDts(allKeys, schemaLocale)
     writeIfChanged(resolve(outputDir, 'typed-i18n.d.ts'), typedContent)
 
-    return { localeCount: allLocales.size, keyCount: allKeys.length }
+    return { localeCount: allLocales.size, keyCount }
 }

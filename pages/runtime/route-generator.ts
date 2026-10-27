@@ -1,11 +1,19 @@
-import fg from 'fast-glob'
 import { resolve } from 'node:path'
 import type { NuxtPage } from '@nuxt/schema'
+import { toPosixPath } from '../../shared/runtime/paths'
+import { getDomainTreeScan, type DomainScanCache } from '../../shared/runtime/scan'
 import type { DomainConfig, DomainPagesOptions } from './types'
-import { normalizeKey, toPathSegment, cleanName, normalizeDomainParts, isIgnoredDomainPath } from './utils'
+import {
+    normalizeKey,
+    toPathSegment,
+    cleanName,
+    normalizeDomainParts,
+    isIgnoredDomainPath,
+    toNuxtLayoutName,
+    flattenRouteMap,
+    type RouteEntry,
+} from './utils'
 import { detectRouteConflicts, reportRouteConflicts } from './route-conflicts'
-
-const toPosixPath = (p: string) => p.replace(/\\/g, '/')
 
 const toKebabLower = (s: string) =>
     s
@@ -22,16 +30,6 @@ const toRouteSegment = (seg: string) => {
 const toArray = (mw?: string[] | string) => {
     if (!mw) return []
     return Array.isArray(mw) ? mw : [mw]
-}
-
-function toNuxtLayoutName(domainId: string, layout: string): string {
-    const domainName = domainId.replace(/[\\/]+/g, '-')
-    const layoutName = layout.replace(/\\/g, '/').replace(/\.vue$/i, '').replace(/\//g, '-')
-    return `${domainName}-${layoutName}`
-        .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
-        .replace(/[^a-zA-Z0-9-]/g, '-')
-        .replace(/-+/g, '-')
-        .toLowerCase()
 }
 
 /* ------------------------------------------------------------------ */
@@ -145,30 +143,22 @@ export interface GeneratedRouteMap {
     routeMap: Map<string, NuxtPage>
     /** Collected for typed-router generation */
     allRouteNames: Array<{ path: string; name: string }>
+    /** Toutes les routes aplaties (chemin complet, nom, fichier). */
+    entries: RouteEntry[]
 }
 
-export function generateDomainRoutes(
+export async function generateDomainRoutes(
     domainsRoot: string,
     domainConfigs: Map<string, DomainConfig>,
     options: DomainPagesOptions,
-    debugLog: (...args: any[]) => void
-): Promise<GeneratedRouteMap> {
-    return _generateDomainRoutes(domainsRoot, domainConfigs, options, debugLog)
-}
-
-async function _generateDomainRoutes(
-    domainsRoot: string,
-    domainConfigs: Map<string, DomainConfig>,
-    options: DomainPagesOptions,
-    debugLog: (...args: any[]) => void
+    debugLog: (...args: any[]) => void,
+    /** Index partagé de l'arborescence (voir `getDomainScanCache`). */
+    scanCache?: DomainScanCache
 ): Promise<GeneratedRouteMap> {
     const noPrefixDomains = options.noPrefixDomains ?? []
     const childrenDirName = options.childrenDirName ?? 'children'
 
-    const files = await fg('**/pages/**/*.vue', {
-        cwd: domainsRoot,
-        ignore: ['**/_*/**'],
-    })
+    const files = (await getDomainTreeScan(domainsRoot, scanCache)).pageFiles
 
     const routeMap = new Map<string, NuxtPage>()
     const childrenMap = new Map<string, NuxtPage[]>()
@@ -358,37 +348,14 @@ async function _generateDomainRoutes(
         })
     }
 
-    // Collect all route names for typed-router generation
-    const allRouteNames: Array<{ path: string; name: string }> = []
-    for (const route of routeMap.values()) {
-        collectRouteNames(route, '', allRouteNames)
-    }
+    // Un seul aplatissement pour le typage, les conflits et la doc.
+    const entries = flattenRouteMap(routeMap)
+    const allRouteNames = entries.map(({ path, name }) => ({ path, name }))
 
     reportRouteConflicts(
-        detectRouteConflicts(routeMap),
+        detectRouteConflicts(routeMap, entries),
         options.strict === true
     )
 
-    return { routeMap, allRouteNames }
-}
-
-function collectRouteNames(
-    page: NuxtPage,
-    parentPath: string,
-    out: Array<{ path: string; name: string }>
-) {
-    const seg = page.path ?? ''
-    let fullPath: string
-    if (parentPath === '') {
-        fullPath = seg === '' ? '/' : seg.startsWith('/') ? seg : `/${seg}`
-    } else {
-        const base = parentPath === '/' ? '' : parentPath.replace(/\/$/, '')
-        fullPath = seg === '' ? parentPath : `${base}/${seg}`.replace(/\/+/g, '/')
-    }
-    if (fullPath !== '/' && !fullPath.startsWith('/')) fullPath = `/${fullPath}`
-
-    out.push({ path: fullPath, name: (page.name as string) || '' })
-    for (const child of page.children || []) {
-        collectRouteNames(child, fullPath, out)
-    }
+    return { routeMap, allRouteNames, entries }
 }

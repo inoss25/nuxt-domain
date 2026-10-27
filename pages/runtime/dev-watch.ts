@@ -2,6 +2,7 @@ import { updateTemplates } from 'nuxt/kit'
 import type { Nuxt, NuxtPage } from '@nuxt/schema'
 import { relative } from 'node:path'
 import { fileIsUnderRoot } from '../../shared/runtime/paths'
+import type { DomainScanCache } from '../../shared/runtime/scan'
 import type { DomainConfig, DomainPagesOptions } from './types'
 import { generateDomainRoutes } from './route-generator'
 import { writeRouteDoc } from './route-doc'
@@ -41,6 +42,7 @@ export interface RefreshDomainPagesContext {
     options: DomainPagesOptions
     routeDoc: { enabled: boolean; outDir: string; fileName: string }
     debugLog: (...args: any[]) => void
+    scanCache?: DomainScanCache
 }
 
 /** Régénère les routes domaine dans `app.pages` et met à jour `routes.mjs`. */
@@ -50,11 +52,12 @@ export async function refreshDomainPages(
     const app = ctx.nuxt.apps.default
     if (!app?.pages) return false
 
-    const { routeMap, allRouteNames } = await generateDomainRoutes(
+    const { routeMap, allRouteNames, entries } = await generateDomainRoutes(
         ctx.domainsRoot,
         ctx.domainConfigs,
         ctx.options,
-        ctx.debugLog
+        ctx.debugLog,
+        ctx.scanCache
     )
 
     app.pages = removeDomainRoutes(app.pages, ctx.domainsRoot)
@@ -67,6 +70,7 @@ export async function refreshDomainPages(
         routeDoc: ctx.routeDoc,
         routeMap,
         allRouteNames,
+        entries,
         debugLog: ctx.debugLog,
     })
 

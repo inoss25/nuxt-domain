@@ -164,6 +164,8 @@ Les options de surveillance servent uniquement en développement; elles n’affe
 
 ### `i18n` : fichiers de traduction
 
+Sans `@nuxtjs/i18n` dans le projet, passe `i18n: false` pour désactiver entièrement la génération des traductions.
+
 | Option | Défaut | Pourquoi et quand la modifier |
 |---|---|---|
 | `sharedI18nDirs` | `['app/shared/i18n']` | Dossiers pour les traductions utilisées par plusieurs domaines (navigation, nom de l’application, messages communs). Les placer ici évite de les dupliquer dans chaque domaine. |

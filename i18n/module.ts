@@ -8,6 +8,11 @@ import {
     collectLocaleCodesFromNuxt,
 } from './runtime/generate-locales'
 import { getDomainConfigCache } from '../shared/runtime/config-loader'
+import {
+    getDomainScanCache,
+    resolveWatchPath,
+    watchDomainTree,
+} from '../shared/runtime/scan'
 
 function shouldRegenerateFromWatch(
     absPath: string,
@@ -82,6 +87,8 @@ export default defineNuxtModule<DomainI18nOptions>({
         })
 
         const configCache = getDomainConfigCache(nuxt)
+        const scanCache = getDomainScanCache(nuxt, domainsRoot)
+        watchDomainTree(nuxt, domainsRoot, scanCache)
 
         // Les locales configurées (et la locale par défaut) influencent la sortie :
         // si un autre module les modifie après notre setup, il faut régénérer.
@@ -108,6 +115,7 @@ export default defineNuxtModule<DomainI18nOptions>({
                 pagesRuntimeDir,
                 debugLog,
                 configCache,
+                scanCache,
             })
         }
 
@@ -147,9 +155,7 @@ export default defineNuxtModule<DomainI18nOptions>({
             }
 
             nuxt.hook('builder:watch', (_event, rawPath) => {
-                const absPath = isAbsolute(rawPath)
-                    ? rawPath
-                    : resolve(nuxt.options.srcDir, rawPath)
+                const absPath = resolveWatchPath(nuxt.options.srcDir, rawPath)
                 if (
                     !shouldRegenerateFromWatch(
                         absPath,

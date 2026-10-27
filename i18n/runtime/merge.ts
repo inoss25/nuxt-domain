@@ -20,6 +20,22 @@ export function deepMerge(
     return out
 }
 
+/**
+ * Comme `deepMerge`, mais modifie `target` au lieu de le copier. Réservé aux
+ * arbres que l'appelant possède (le catalogue en cours de génération).
+ */
+function mergeInto(
+    target: Record<string, unknown>,
+    overlay: Record<string, unknown>
+): void {
+    for (const key of Object.keys(overlay)) {
+        const b = target[key]
+        const o = overlay[key]
+        if (isPlainObject(b) && isPlainObject(o)) mergeInto(b, o)
+        else target[key] = o
+    }
+}
+
 export interface MergeAtDomainPathContext {
     source: string
     onTypeConflict?: (keyPath: string, prev: unknown, next: unknown) => void
@@ -33,14 +49,14 @@ export function mergeAtDomainPath(
     ctx?: MergeAtDomainPathContext
 ) {
     if (domainSegments.length === 0) {
-        const m = deepMerge(target, value)
-        for (const k of Object.keys(m)) target[k] = m[k]
+        mergeInto(target, value)
         return
     }
     let cur: Record<string, unknown> = target
+    let keyPath = ''
     for (let i = 0; i < domainSegments.length; i++) {
         const seg = domainSegments[i]!
-        const keyPath = [...domainSegments.slice(0, i + 1)].join('.')
+        keyPath = keyPath ? `${keyPath}.${seg}` : seg
         if (i === domainSegments.length - 1) {
             const prev = cur[seg]
             if (prev !== undefined) {
@@ -51,11 +67,8 @@ export function mergeAtDomainPath(
                     return
                 }
             }
-            const merged =
-                isPlainObject(prev) && isPlainObject(value)
-                    ? deepMerge(prev, value)
-                    : value
-            cur[seg] = merged
+            if (isPlainObject(prev) && isPlainObject(value)) mergeInto(prev, value)
+            else cur[seg] = value
         } else {
             const next = cur[seg]
             if (next !== undefined && !isPlainObject(next)) {

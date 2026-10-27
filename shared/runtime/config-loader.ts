@@ -1,9 +1,9 @@
-import fg from 'fast-glob'
 import { createJiti } from 'jiti'
 import { stat } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import type { DomainConfigPathFields, DomainPathsOptions } from './types'
 import { isIgnoredDomainPath, normalizeDomainParts, toPosixPath } from './paths'
+import { getDomainTreeScan, type DomainScanCache } from './scan'
 
 export interface LoadDomainConfigsResult<T> {
     configs: Map<string, T>
@@ -73,6 +73,8 @@ export interface LoadDomainConfigsParams<T extends DomainConfigPathFields> {
      * ré-évalue tout (comportement d'origine, aucun état conservé).
      */
     cache?: DomainConfigCache
+    /** Index partagé de l'arborescence (voir `getDomainScanCache`). */
+    scanCache?: DomainScanCache
 }
 
 type JitiModuleCache = Record<string, unknown>
@@ -99,15 +101,13 @@ export async function loadDomainConfigs<T extends DomainConfigPathFields>(
         debugLog,
         onConfigLoaded,
         cache,
+        scanCache,
     } = params
 
     const domainConfigs = new Map<string, T>()
     let failedCount = 0
 
-    const configFiles = await fg('**/domain.config.ts', {
-        cwd: domainsRoot,
-        ignore: ['**/_*/**'],
-    })
+    const { configFiles } = await getDomainTreeScan(domainsRoot, scanCache)
 
     // Ordre déterministe (profondeur, puis chemin) : l'empreinte du cache en dépend.
     const sortedConfigFiles = configFiles

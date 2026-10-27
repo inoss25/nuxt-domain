@@ -1,22 +1,7 @@
 import type { NuxtPage } from '@nuxt/schema'
-import type { DomainRouteOverride } from '../../shared/runtime/types'
+import type { DomainConfig, DomainRouteOverride } from '../../shared/runtime/types'
 
-export type { DomainRouteOverride }
-
-export interface DomainConfig {
-  enabled?: boolean
-  prefix?: string
-  noPrefix?: boolean
-  hasSubDomains?: boolean
-  prefixSubDomains?: boolean
-  subDomainsDirName?: string
-  home?: boolean
-  /** Layout Nuxt du domaine, relatif à layouts/ (ex. "default" ou "auth/login"). */
-  layout?: string | false
-  middleware?: string[] | string
-  meta?: Record<string, unknown>
-  routes?: Record<string, DomainRouteOverride>
-}
+export type { DomainConfig, DomainRouteOverride }
 
 export interface DomainRouteDocOptions {
   enabled?: boolean
