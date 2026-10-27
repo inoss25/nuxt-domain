@@ -103,7 +103,8 @@ export default defineNuxtConfig({
     },
   },
 
-  // Options avancées de @nuxtjs/i18n (facultatif), fusionnées avec celles de nuxt-domain.
+  // Options avancées de @nuxtjs/i18n (facultatif), fusionnées avec celles de nuxt-domain :
+  // https://i18n.nuxtjs.org/docs/getting-started
   i18n: {
     strategy: 'prefix_except_default',
   },

@@ -46,7 +46,7 @@ export default defineNuxtConfig({
 })
 ```
 
-nuxt-domain génère un fichier `<code>.json` par locale et le transmet à `@nuxtjs/i18n` : ni `langDir` ni `file` à configurer. Les autres options de `@nuxtjs/i18n` restent sous la clé `i18n` habituelle et sont fusionnées :
+nuxt-domain génère un fichier `<code>.json` par locale et le transmet à `@nuxtjs/i18n` : ni `langDir` ni `file` à configurer. Les autres [options de `@nuxtjs/i18n`](https://i18n.nuxtjs.org/docs/getting-started) restent sous la clé `i18n` habituelle et sont fusionnées :
 
 ```ts
 export default defineNuxtConfig({
