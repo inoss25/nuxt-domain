@@ -84,7 +84,9 @@ export async function exposeBundledI18nTypes(nuxt: Nuxt): Promise<void> {
     const pkgDir = dirname(pkgJson)
 
     nuxt.hook('prepare:types', ({ tsConfig, nodeTsConfig, sharedTsConfig }) => {
+        // `nodeTsConfig` et `sharedTsConfig` n'existent qu'à partir de Nuxt 4.
         for (const config of [tsConfig, nodeTsConfig, sharedTsConfig]) {
+            if (!config) continue
             config.compilerOptions ??= {}
             config.compilerOptions.paths ??= {}
             config.compilerOptions.paths[I18N_MODULE] ??= [pkgDir]
