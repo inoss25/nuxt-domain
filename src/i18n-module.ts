@@ -1,6 +1,7 @@
 import { defineNuxtModule } from 'nuxt/kit'
-import { resolve, relative, isAbsolute, dirname } from 'node:path'
+import { resolve, relative, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { resolveLangDir, toI18nLocales } from './i18n-dependency'
 import { fileIsUnderRoot, toPosixPath } from './runtime/shared/paths'
 import type { DomainI18nOptions } from './runtime/i18n/types'
 import {
@@ -18,6 +19,19 @@ import {
     resolveWatchPath,
     watchDomainTree,
 } from './runtime/shared/scan'
+
+/** Hook de @nuxtjs/i18n pour les modules qui fournissent leurs locales. */
+interface I18nRegisterHookable {
+    hook(
+        name: 'i18n:registerModule',
+        fn: (
+            register: (config: {
+                langDir: string
+                locales: Array<Record<string, unknown>>
+            }) => void
+        ) => void
+    ): void
+}
 
 function shouldRegenerateFromWatch(
     absPath: string,
@@ -72,14 +86,16 @@ export default defineNuxtModule<DomainI18nOptions>({
         const i18nHost = nuxt as unknown as NuxtI18nHost
         i18nHost.options.i18n ??= {}
         const i18nOpts = i18nHost.options.i18n
-        if (i18nOpts.langDir === undefined) {
-            const i18nDirName =
-                typeof i18nOpts.dir === 'string' ? i18nOpts.dir : 'i18n'
-            const i18nBase = isAbsolute(i18nDirName)
-                ? i18nDirName
-                : resolve(rootDir, i18nDirName)
-            const rel = relative(i18nBase, outputDir).replace(/\\/g, '/')
-            i18nOpts.langDir = rel && !rel.startsWith('..') ? rel : 'locales'
+        i18nOpts.langDir ??= resolveLangDir(rootDir, options.outputDir!, i18nOpts)
+
+        // Locales déclarées dans `domain.i18n` : @nuxtjs/i18n lit les fichiers
+        // générés directement dans `outputDir` (résolu au `modules:done`).
+        if (options.locales?.length) {
+            const locales = toI18nLocales(options.locales)
+            const i18nHooks = nuxt as unknown as I18nRegisterHookable
+            i18nHooks.hook('i18n:registerModule', (register) => {
+                register({ langDir: outputDir, locales })
+            })
         }
 
         const typedI18nFile = resolve(outputDir, 'typed-i18n.d.ts')

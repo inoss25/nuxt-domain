@@ -3,6 +3,10 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import domainPagesModule from './pages-module'
 import domainI18nModule from './i18n-module'
+import {
+    exposeBundledI18nTypes,
+    getI18nModuleDependencies,
+} from './i18n-dependency'
 import { reportDiagnostics } from './runtime/shared/diagnostics'
 import { resolveDomainKeyFormat } from './runtime/shared/naming'
 import { getDomainScanCache, watchDomainTree } from './runtime/shared/scan'
@@ -17,9 +21,12 @@ export default defineNuxtModule<DomainModuleOptions>({
         name: 'nuxt-domain',
         configKey: 'domain',
         compatibility: {
-            nuxt: '>=3.12.0',
+            // `moduleDependencies` (installation de @nuxtjs/i18n) : Nuxt 3.19+ / 4.1+.
+            nuxt: '^3.19.0 || >=4.1.0',
         },
     },
+
+    moduleDependencies: getI18nModuleDependencies,
 
     defaults: {
         domainsDir: 'app/domains',
@@ -69,6 +76,7 @@ export default defineNuxtModule<DomainModuleOptions>({
         })
 
         if (i18nEnabled) {
+            await exposeBundledI18nTypes(nuxt)
             await installModule(domainI18nModule, {
                 ...i18nOpts,
                 ...shared,

@@ -1,7 +1,24 @@
 import type { NameFormat } from '../shared/naming'
 import type { LocaleStructureMode } from './validate-i18n'
 
+/**
+ * Locale déclarée dans `domain.i18n.locales` : un code (`'fr'`) ou un objet
+ * `@nuxtjs/i18n` dont `file` vaut `<code>.json` par défaut.
+ */
+export type DomainLocaleInput =
+  | string
+  | ({ code: string; file?: string; name?: string } & Record<string, unknown>)
+
 export interface DomainI18nOptions {
+  /**
+   * Locales transmises à `@nuxtjs/i18n` (ignorées si `i18n.locales` est défini).
+   * @example ['fr', 'en']
+   */
+  locales?: DomainLocaleInput[]
+
+  /** Locale par défaut transmise à `@nuxtjs/i18n` (`i18n.defaultLocale` reste prioritaire). */
+  defaultLocale?: string
+
   /**
    * Racine des domaines (même convention que `domain-pages`).
    * @default 'app/domains'
